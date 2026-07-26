@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBT Pro</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; max-width: 900px; margin: auto; color: #333; }
+  h2, h3, h4 { color: #007bff; margin-bottom: 10px; text-align: center; }
+  #setup { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
+.q { margin-bottom: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+.q p { margin: 0 0 15px 0; font-size: 17px; font-weight: 600; line-height: 1.5; }
+  label { display: block; margin: 10px 0; cursor: pointer; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; transition: 0.2s; }
+  label:hover { background: #e7f3ff; border-color: #00bcff; }
+  input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
+  button { padding: 12px 20px; margin: 10px 5px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.2s; }
+  button:hover { transform: translateY(-2px); }
+.btn-primary { background: #00bcff; color: white; }
+.btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+.btn-danger { background: #dc3545; color: white; }
+
+  /* Time Buttons */
+.btn-time {
+      background: #e9ecef; color: #333; border: 2px solid transparent;
+      padding: 14px 28px; margin: 10px 8px; font-size: 16px; width: auto; display: inline-block;
+  }
+.btn-time.active { background: #007bff; color: white; border-color: #007bff; }
+
+  /* Question Number Buttons */
+.btn-q {
+      background: #e9ecef; color: #333; border: 2px solid transparent;
+      padding: 10px 0; margin: 4px; font-size: 14px; width: 45px; text-align: center; display: inline-block;
+  }
+.btn-q.active { background: #007bff; color: white; border-color: #007bff; } /* Current = Blue */
+.btn-q.answered { background: #28a745; color: white; border-color: #28a745; } /* Answered = Green */
+
+.timer { position: sticky; top: 10px; background: linear-gradient(90deg, #ff9800, #ff5722); color: white; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 10px; margin-bottom: 20px; display: none; z-index: 100; }
+
+.stats-box { background:white; padding:25px; border-radius:12px; margin-bottom:20px; border:1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
+.stats-box h3 { font-size: 28px; color: #00bcff; }
+
+  /* Scrollable Question Nav */
+.question-nav {
+      display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; margin: 20px 0;
+      max-height: 180px; overflow-y: auto; padding: 12px; background: white;
+      border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: none;
+  }
+.question-nav::-webkit-scrollbar { width: 8px; }
+.question-nav::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+.explanation { 
+  background: #e6f7ff; 
+  padding: 12px; 
+  border-radius: 8px; 
+  margin-top: 10px; 
+  font-size: 14px;
+  display: none; /* hidden until JS shows it */
+}
+  .review-item {
+  background: #f8f8f8;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+
+  /* PASSAGE BOX */
+.passage-box { background: #f8f9ff; border: 2px solid #667eea; border-radius: 10px; margin-bottom: 20px; }
+.passage-box summary { padding: 12px 15px; font-weight: 700; color: #667eea; cursor: pointer; list-style: none; font-size: 1rem; }
+.passage-box summary:after { content: ' ▼'; float: right; }
+.passage-box[open] summary:after { content: ' ▲'; }
+.passage-content { padding: 15px; border-top: 1px solid #ddd; max-height: 250px; overflow-y: auto; line-height: 1.6; font-size: 0.95rem; }
+
+  @media (max-width: 600px) {
+  .question-nav { grid-template-columns: repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+  <div id="setup">
+    <h2>Select Test Type</h2>
+    <h4>1. Choose number of questions:</h4>
+    <div id="qNumOptions">
+      <button class="btn-time" onclick="selectQuestions(20, event)">20 Questions</button>
+      <button class="btn-time" onclick="selectQuestions(50, event)">50 Questions</button>
+    </div>
+    <h4>2. Choose time:</h4>
+    <div id="timeOptions">
+      <button class="btn-time" onclick="selectTime(20, event)">20 mins</button>
+      <button class="btn-time" onclick="selectTime(30, event)">30 mins</button>
+      <button class="btn-time" onclick="selectTime(40, event)">40 mins</button>
+      <button class="btn-time" onclick="selectTime(60, event)">1 hr</button>
+    </div>
+    <br>
+    <button class="btn-primary" onclick="startTest()" id="startBtn" disabled>Start Test</button>
+  </div>
+
+  <div class="timer" id="timer"></div>
+  <div class="question-nav" id="questionNav"></div>
+  <div id="quiz"></div>
+  <div class="explanation" id="explanation"></div>
+
+<script>
+const passages = {
+ 1: { title: "PASSAGE I:", text: `The approach to the University is being restructured to ease the flow of traffic...` },
+ 2: { title: "PASSAGE II:", text: `How can people be sure they are truly marrying people with who are truly compatible?...` }
+};
+
+const questionBank = [
+  {id: 1, q: "The general water budget equation is?", options: ["P = ET - Q + ΔS","P = ET + Q + ΔS","P + ET = Q + ΔS","Q = P - ET - ΔS"], correct: 1, explanation: "Based on Law of Conservation of Mass. Inputs = Outputs + Change in Storage for any watershed."},
+  {id: 2, q: "What does P represent in the water budget?", options: ["Evapotranspiration","Precipitation","Runoff","Storage"], correct: 1, explanation: "P is Precipitation. It is the main input of water into a basin from rain, snow, hail, etc."},
+  {id: 3, q: "What does ET represent?", options: ["Surface runoff","Evapotranspiration","Change in storage","Infiltration"], correct: 1, explanation: "ET is Evapotranspiration. Combined water loss from evaporation and plant transpiration."},
+  {id: 4, q: "What does Q represent?", options: ["Precipitation","Evapotranspiration","Surface runoff","Groundwater recharge"], correct: 2, explanation: "Q is Surface runoff. Water that flows over land into streams and rivers."},
+  {id: 5, q: "What does ΔS represent?", options: ["Change in storage","Change in precipitation","Change in runoff","Change in temperature"], correct: 0, explanation: "ΔS is Change in Storage. Water stored in soil, lakes, aquifers, snowpack."},
+  {id: 6, q: "Given P=1200mm, ET=700mm, ΔS=0. Find Q.", options: ["400mm","500mm","600mm","700mm"], correct: 1, explanation: "Q = P - ET - ΔS = 1200 - 700 - 0 = 500mm"},
+  {id: 7, q: "If P < ET + Q, then storage is?", options: ["Increasing","Decreasing","Constant","Zero"], correct: 1, explanation: "More water leaving than entering means storage is being depleted."},
+  {id: 8, q: "The largest component of global evaporation is from?", options: ["Soil","Plants","Oceans","Lakes"], correct: 2, explanation: "Oceans cover 71% of Earth and supply most evaporated water."},
+  {id: 9, q: "FAO reference crop for ET calculation is?", options: ["Maize","Actively growing grass 0.12m","Trees","Bare soil"], correct: 1, explanation: "Reference ET uses uniform, well-watered grass 0.12m tall as standard."},
+  {id: 10, q: "Which is the most accurate direct method to measure ET?", options: ["Pan evaporation","Atmometer","Lysimeter","Remote sensing"], correct: 2, explanation: "Lysimeter measures actual ET but is expensive and covers small area."},
+  {id: 11, q: "Main limitation of lysimeter?", options: ["Inaccurate","Expensive and small area","Measures only runoff","Needs no maintenance"], correct: 1, explanation: "High cost, maintenance, and limited spatial representation."},
+  {id: 12, q: "Atmometer is used mainly for?", options: ["Measuring rainfall","Irrigation scheduling","Measuring discharge","Measuring infiltration"], correct: 1, explanation: "Portable and inexpensive. Gives good estimate of ET for irrigation."},
+  {id: 13, q: "Energy used to convert liquid water to vapor is called?", options: ["Sensible heat flux","Latent heat flux","Soil heat flux","Net radiation"], correct: 1, explanation: "Latent heat flux is the energy consumed during evaporation."},
+  {id: 14, q: "Sublimation occurs mainly in?", options: ["Tropics","Deserts","Cold regions","Oceans"], correct: 2, explanation: "Direct conversion of snow/ice to vapor without melting."},
+  {id: 15, q: "Canopy interception reduces?", options: ["Evaporation","Water reaching the ground","Infiltration","Transpiration"], correct: 1, explanation: "Rain caught on leaves can evaporate before reaching soil."},
+  {id: 16, q: "Surface runoff occurs when rainfall exceeds?", options: ["Evaporation rate","Infiltration capacity","Transpiration rate","Storage capacity"], correct: 1, explanation: "When soil cannot absorb water fast enough, excess flows overland."},
+  {id: 17, q: "Soil type with highest infiltration rate?", options: ["Clay","Silt","Sand","Loam"], correct: 2, explanation: "Sand has large pores. Clay has very low infiltration."},
+  {id: 18, q: "Vegetation increases infiltration by?", options: ["Blocking rain","Creating root channels","Reducing evaporation","Increasing slope"], correct: 1, explanation: "Roots create macropores that allow water to enter soil."},
+  {id: 19, q: "Steep slopes tend to produce?", options: ["More infiltration","More runoff","Less erosion","More storage"], correct: 1, explanation: "Water moves faster downslope with less time to infiltrate."},
+  {id: 20, q: "Negative effect of excessive runoff?", options: ["Groundwater recharge","Soil erosion","Increased infiltration","Reduced flooding"], correct: 1, explanation: "Runoff causes erosion, sedimentation, flooding, and pollution."},
+  {id: 21, q: "Discharge equation for a stream is?", options: ["Q = A + V","Q = A - V","Q = A * V","Q = A / V"], correct: 2, explanation: "Q = Cross-sectional Area x Velocity. Units are m³/s."},
+  {id: 22, q: "Unit of stream discharge Q?", options: ["mm","m³/s","kg/m²","N"], correct: 1, explanation: "Volume per unit time."},
+  {id: 23, q: "For A=10m², V=3m/s, Q=?", options: ["13 m³/s","20 m³/s","30 m³/s","40 m³/s"], correct: 2, explanation: "10 x 3 = 30 m³/s"},
+  {id: 24, q: "1mm of rainfall over 1m² equals what volume?", options: ["0.0001 m³","0.001 m³","0.01 m³","0.1 m³"], correct: 1, explanation: "Volume = Area x Depth = 1m² x 0.001m = 0.001m³"},
+  {id: 25, q: "10mm rainfall on 5000m² gives what volume?", options: ["5 m³","50 m³","500 m³","5000 m³"], correct: 1, explanation: "5000m² x 0.01m = 50m³"},
+  {id: 26, q: "Average residence time of water in atmosphere?", options: ["2 days","9 days","1 month","1 year"], correct: 1, explanation: "Water cycles quickly through the atmosphere."},
+  {id: 27, q: "Average residence time of water in a river?", options: ["9 days","2 weeks","6 months","2 years"], correct: 1, explanation: "Rivers move water fast compared to lakes or groundwater."},
+  {id: 28, q: "Water in deep ocean has residence time of about?", options: ["10 years","100 years","1000 years","3200 years"], correct: 3, explanation: "Deep ocean circulation is very slow."},
+  {id: 29, q: "Wetlands act as?", options: ["Flood accelerators","Natural sponges","Heat sources","Evaporation pans"], correct: 1, explanation: "They store floodwater and release it slowly."},
+  {id: 30, q: "Destroying wetlands increases?", options: ["Drought","Flood risk","Infiltration","Evaporation"], correct: 1, explanation: "Less natural storage means higher peak flows."},
+  {id: 31, q: "Which process returns water from plants to atmosphere?", options: ["Evaporation","Condensation","Transpiration","Precipitation"], correct: 2, explanation: "Plants lose water through stomata during transpiration."},
+  {id: 32, q: "Potential ET is greater than actual ET when?", options: ["Soil is saturated","Soil is dry","It is raining","Temperature is low"], correct: 1, explanation: "Water limitation reduces actual ET below potential."},
+  {id: 33, q: "Pan coefficient is used to?", options: ["Convert pan evaporation to lake evaporation","Measure rainfall","Calculate runoff","Find discharge"], correct: 0, explanation: "Pan overestimates evaporation, so we apply a coefficient < 1."},
+  {id: 34, q: "Main factor controlling evaporation rate?", options: ["Wind speed","Soil color","Groundwater","Slope"], correct: 0, explanation: "Wind removes saturated air and brings dry air."},
+  {id: 35, q: "Net radiation provides energy for?", options: ["Infiltration","Evaporation","Runoff","Condensation"], correct: 1, explanation: "Solar energy drives the evaporation process."},
+  {id: 36, q: "Hortonian overland flow occurs when?", options: ["Rainfall intensity > infiltration","Soil is saturated","Snow melts","Groundwater rises"], correct: 0, explanation: "Classic infiltration-excess runoff."},
+  {id: 37, q: "Saturation overland flow occurs when?", options: ["Rainfall is intense","Soil is already saturated","Slope is steep","Soil is dry"], correct: 1, explanation: "Common in wetlands and near streams."},
+  {id: 38, q: "Baseflow in rivers comes from?", options: ["Direct rainfall","Surface runoff","Groundwater","Evaporation"], correct: 2, explanation: "Groundwater seepage sustains flow during dry periods."},
+  {id: 39, q: "Hydrograph peak is delayed by?", options: ["Urbanization","Wetlands","Steep slope","Bare soil"], correct: 1, explanation: "Wetlands and lakes attenuate flood peaks."},
+  {id: 40, q: "Urbanization typically causes?", options: ["Less runoff","More infiltration","More runoff","Less evaporation"], correct: 2, explanation: "Impervious surfaces reduce infiltration."},
+  {id: 41, q: "Rain gauge measures?", options: ["Discharge","Precipitation depth","Evaporation","Infiltration"], correct: 1, explanation: "Depth of water collected over a time period."},
+  {id: 42, q: "Thiessen polygon method is used for?", options: ["Average rainfall over area","ET estimation","Runoff routing","Soil moisture"], correct: 0, explanation: "Weights rain gauges by area of influence."},
+  {id: 43, q: "Isohyetal method uses?", options: ["Lines of equal rainfall","Equal area polygons","Time series","Energy balance"], correct: 0, explanation: "Contours of equal precipitation depth."},
+  {id: 44, q: "Water year usually starts in?", options: ["January","April","October","July"], correct: 2, explanation: "In many countries it starts Oct 1 to capture wet season."},
+  {id: 45, q: "Cumulative departure curve shows?", options: ["Rainfall intensity","Surplus and deficit periods","Evaporation rate","Soil type"], correct: 1, explanation: "Used in water budget analysis."},
+  {id: 46, q: "Field capacity is water held after?", options: ["Rainfall","Drainage by gravity","Wilting","Evaporation"], correct: 1, explanation: "Water remaining 2-3 days after saturation."},
+  {id: 47, q: "Wilting point is when plants?", options: ["Grow fastest","Cannot extract more water","Transpire most","Store water"], correct: 1, explanation: "Soil water is too tightly held for roots."},
+  {id: 48, q: "Available water capacity is between?", options: ["Saturation and field capacity","Field capacity and wilting point","Wilting point and dry","0 and saturation"], correct: 1, explanation: "Water plants can actually use."},
+  {id: 49, q: "Darcy's law describes?", options: ["Evaporation","Groundwater flow","Surface runoff","Rainfall"], correct: 1, explanation: "Flow = K * Area * Hydraulic gradient."},
+  {id: 50, q: "Aquifer recharge occurs mainly by?", options: ["Evaporation","Infiltration","Runoff","Transpiration"], correct: 1, explanation: "Water percolates down to water table."},
+  {id: 51, q: "Confined aquifer is bounded by?", options: ["Impermeable layers","River","Lake","Soil"], correct: 0, explanation: "Water is under pressure between aquitards."},
+  {id: 52, q: "Specific yield is?", options: ["Total porosity","Drainable porosity","Field capacity","Wilting point"], correct: 1, explanation: "Volume of water that drains by gravity."},
+  {id: 53, q: "Transmissivity is important for?", options: ["Well yield","Evaporation","Rainfall","Runoff"], correct: 0, explanation: "K * aquifer thickness. Controls how much water a well can deliver."},
+  {id: 54, q: "Cone of depression forms around?", options: ["Lake","Pumping well","River","Dam"], correct: 1, explanation: "Water table drops near extraction point."},
+  {id: 55, q: "Saltwater intrusion occurs in?", options: ["Mountain aquifers","Coastal aquifers","Desert aquifers","All aquifers"], correct: 1, explanation: "Overpumping pulls sea water inland."},
+  {id: 56, q: "Curve Number method estimates?", options: ["ET","Runoff","Infiltration","Rainfall"], correct: 1, explanation: "SCS method based on soil and land use."},
+  {id: 57, q: "Higher Curve Number means?", options: ["More infiltration","Less runoff","More runoff","Less rainfall"], correct: 2, explanation: "Impervious areas have high CN."},
+  {id: 58, q: "Time of concentration is?", options: ["Rain duration","Travel time from farthest point","Peak time","Baseflow time"], correct: 1, explanation: "Used in rational method for peak runoff."},
+  {id: 59, q: "Rational formula Q = CiA is used for?", options: ["Large basins","Small urban catchments","Lakes","Groundwater"], correct: 1, explanation: "C=runoff coeff, i=rainfall intensity, A=area."},
+  {id: 60, q: "Unit hydrograph assumes?", options: ["Nonlinear response","Linear time-invariant system","Constant rainfall","No losses"], correct: 1, explanation: "Response to 1 unit of excess rainfall."},
+  {id: 61, q: "Flood routing is done to?", options: ["Increase peak","Predict peak downstream","Measure rainfall","Estimate ET"], correct: 1, explanation: "Muskingum and reservoir routing methods."},
+  {id: 62, q: "100-year flood has annual exceedance probability of?", options: ["1%","10%","50%","100%"], correct: 0, explanation: "1 in 100 chance each year."},
+  {id: 63, q: "Return period is inversely related to?", options: ["Magnitude","Probability","Duration","Area"], correct: 1, explanation: "Bigger floods are less probable."},
+  {id: 64, q: "Reservoir storage reduces?", options: ["Evaporation","Flood peak","Infiltration","Rainfall"], correct: 1, explanation: "Stores water and releases slowly."},
+  {id: 65, q: "Dead storage is?", options: ["Water above spillway","Water below outlet","Active supply","Flood control"], correct: 1, explanation: "Cannot be withdrawn by gravity."},
+  {id: 66, q: "Evaporation loss from reservoir depends on?", options: ["Depth","Surface area","Volume","Inflow"], correct: 1, explanation: "Larger area means more evaporation."},
+  {id: 67, q: "Seepage loss from reservoir goes to?", options: ["Atmosphere","Groundwater","Runoff","Plants"], correct: 1, explanation: "Water leaks through dam foundation."},
+  {id: 68, q: "Sedimentation reduces?", options: ["Inflow","Storage capacity","Outflow","Evaporation"], correct: 1, explanation: "Reservoir fills with silt over time."},
+  {id: 69, q: "Hydropower generation depends on?", options: ["Head and discharge","Rainfall only","Temperature","Soil type"], correct: 0, explanation: "Power = ρgQH * efficiency."},
+  {id: 70, q: "Irrigation water requirement is based on?", options: ["ETc - Effective rainfall","Total rainfall","Runoff","Infiltration"], correct: 0, explanation: "Crop ET minus rain that is usable."},
+  {id: 71, q: "Drip irrigation is most efficient for?", options: ["Rice","Wheat","Vegetables","Maize"], correct: 2, explanation: "Delivers water directly to root zone."},
+  {id: 72, q: "Leaching requirement is needed for?", options: ["Salinity control","Flood control","ET estimation","Runoff"], correct: 0, explanation: "Extra water to wash salts below root zone."},
+  {id: 73, q: "Drainage coefficient is used for?", options: ["Well design","Drain spacing","Reservoir","Dam"], correct: 1, explanation: "Depth of water to remove per day."},
+  {id: 74, q: "Water quality parameter for salinity?", options: ["pH","EC","Turbidity","DO"], correct: 1, explanation: "Electrical Conductivity measures dissolved salts."},
+  {id: 75, q: "Eutrophication is caused by?", options: ["Nitrogen and Phosphorus","Sediment","Salt","Acid"], correct: 0, explanation: "Nutrients cause algal blooms."},
+  {id: 76, q: "BOD measures?", options: ["Oxygen needed by bacteria","Total solids","Turbidity","pH"], correct: 0, explanation: "Biochemical Oxygen Demand indicates organic pollution."},
+  {id: 77, q: "Turbidity is caused by?", options: ["Dissolved salts","Suspended particles","Temperature","pH"], correct: 1, explanation: "Reduces light penetration."},
+  {id: 78, q: "Self-purification of river involves?", options: ["Sedimentation","Aeration and bacteria","Evaporation","Infiltration"], correct: 1, explanation: "Natural breakdown of pollutants."},
+  {id: 79, q: "Water treatment step after coagulation?", options: ["Disinfection","Flocculation","Filtration","Aeration"], correct: 1, explanation: "Flocs form then settle."},
+  {id: 80, q: "Chlorination is for?", options: ["Remove turbidity","Kill pathogens","Soften water","Remove color"], correct: 1, explanation: "Disinfection of drinking water."},
+  {id: 81, q: "Watershed is defined by?", options: ["Political boundary","Drainage divide","Road network","Soil type"], correct: 1, explanation: "Area draining to a common outlet."},
+  {id: 82, q: "Watershed management aims to?", options: ["Increase runoff","Conserve soil and water","Reduce rainfall","Increase evaporation"], correct: 1, explanation: "Sustainable use of land and water."},
+  {id: 83, q: "Contour bunding is used for?", options: ["Flood control","Soil conservation","Drainage","Irrigation"], correct: 1, explanation: "Slows runoff on slopes."},
+  {id: 84, q: "Check dam is built in?", options: ["River","Gully","Lake","Well"], correct: 1, explanation: "Reduces gully erosion and stores water."},
+  {id: 85, q: "Afforestation helps by?", options: ["Increasing runoff","Reducing infiltration","Increasing infiltration","Reducing rainfall"], correct: 2, explanation: "Trees improve soil structure."},
+  {id: 86, q: "GIS is used in hydrology for?", options: ["Rainfall forecasting","Watershed delineation","Well drilling","Water treatment"], correct: 1, explanation: "Mapping and spatial analysis."},
+  {id: 87, q: "Remote sensing provides data on?", options: ["Groundwater depth","Land use and snow cover","Well yield","Pipe size"], correct: 1, explanation: "Satellite images for basin characteristics."},
+  {id: 88, q: "Hydrologic model calibration requires?", options: ["Rainfall data","Observed runoff data","Soil data","All of the above"], correct: 3, explanation: "Compare simulated and observed outputs."},
+  {id: 89, q: "Validation of model uses?", options: ["Same data as calibration","Independent data set","No data","Future data only"], correct: 1, explanation: "Test model on different period."},
+  {id: 90, q: "Uncertainty in hydrology comes from?", options: ["Data errors","Model structure","Natural variability","All of the above"], correct: 3, explanation: "All sources contribute."},
+  {id: 91, q: "Water footprint measures?", options: ["Rainfall","Volume of water used","Runoff","Storage"], correct: 1, explanation: "Direct and indirect water use."},
+  {id: 92, q: "Virtual water is?", options: ["Groundwater","Water embedded in products","Surface water","Treated water"], correct: 1, explanation: "Water used to produce goods."},
+  {id: 93, q: "Integrated Water Resources Management focuses on?", options: ["Single sector","Coordination across sectors","Only supply","Only demand"], correct: 1, explanation: "Holistic approach."},
+  {id: 94, q: "Climate change may cause?", options: ["Less variability","More extreme events","Constant rainfall","No effect"], correct: 1, explanation: "More floods and droughts."},
+  {id: 95, q: "Drought index based on precipitation?", options: ["SPI","NDVI","BOD","EC"], correct: 0, explanation: "Standardized Precipitation Index."},
+  {id: 96, q: "Flood frequency analysis uses?", options: ["Normal distribution","Extreme value distribution","Uniform distribution","Binomial"], correct: 1, explanation: "Gumbel or Log-Pearson Type III."},
+  {id: 97, q: "Stage-discharge curve is used to?", options: ["Estimate rainfall","Convert stage to discharge","Measure ET","Find infiltration"], correct: 1, explanation: "Rating curve for gauging stations."},
+  {id: 98, q: "Weir is used to measure?", options: ["Rainfall","Discharge","Velocity","Infiltration"], correct: 1, explanation: "Head over weir relates to flow."},
+  {id: 99, q: "Current meter measures?", options: ["Rainfall","Water velocity","Water level","Turbidity"], correct: 1, explanation: "Used with area to get discharge."},
+  {id: 100, q: "Water budget provides?", options: ["Qualitative description","Quantitative description of water movement","Weather forecast","Crop yield prediction"], correct: 1, explanation: "Accounting of inputs, outputs and storage for a basin."},
+  {id: 101, q: "Evaporation from oceans, rivers, lakes is called?", options: ["Soil Evaporation","Open Water Evaporation","Canopy Interception","Sublimation"], correct: 1, explanation: "Open water evaporation is the largest component of global evaporation due to vast ocean surface area."},
+  {id: 102, q: "FAO reference crop for ET calculation is?", options: ["Trees","Actively growing grass 0.12m","Bare soil","Maize"], correct: 1, explanation: "FAO uses uniform, actively growing grass 0.12m tall, well-watered, as the reference for Penman-Monteith equation."},
+  {id: 103, q: "Most accurate direct method to measure ET?", options: ["Pan","Remote sensing","Lysimeter","Atmometer"], correct: 2, explanation: "Lysimeter directly measures water loss from a soil-plant system. Most accurate but expensive and limited area."},
+  {id: 104, q: "Main limitation of lysimeter?", options: ["Inaccurate","Expensive and small area","Measures only runoff","Needs no maintenance"], correct: 1, explanation: "High cost, maintenance, and it represents only a small plot, not a whole field."},
+  {id: 105, q: "Atmometer advantage?", options: ["High accuracy","Portable and inexpensive","Measures runoff","Measures rainfall"], correct: 1, explanation: "Portable, low cost. Used by farmers for irrigation scheduling. Less accurate than lysimeter."},
+  {id: 106, q: "Energy used for evaporation is called?", options: ["Sensible Heat Flux","Latent Heat Flux","Soil Heat Flux","Net Radiation"], correct: 1, explanation: "Latent heat flux is the energy consumed to change water from liquid to vapor without temperature change."},
+  {id: 107, q: "Sublimation occurs mainly in?", options: ["Deserts","Cold regions","Tropics","Oceans"], correct: 1, explanation: "Direct conversion of snow/ice to vapor. Common in cold, dry, high altitude areas."},
+  {id: 108, q: "Canopy interception reduces?", options: ["Groundwater","Water reaching the ground","Infiltration","Transpiration"], correct: 1, explanation: "Rain intercepted by leaves can evaporate back to atmosphere before reaching soil."},
+  {id: 109, q: "Surface runoff occurs when rainfall exceeds?", options: ["Evaporation","Infiltration capacity","Transpiration","Storage"], correct: 1, explanation: "Hortonian runoff. When rain intensity > soil infiltration rate, excess flows overland."},
+  {id: 110, q: "Soil type with highest infiltration rate?", options: ["Clay","Silt","Sand","Loam"], correct: 2, explanation: "Sand has large pores and high permeability. Clay has smallest pores and lowest infiltration."},
+  {id: 111, q: "Vegetation increases infiltration by?", options: ["Blocking rain","Creating root channels","Reducing evaporation","Increasing slope"], correct: 1, explanation: "Plant roots create macropores and organic matter that improve soil structure."},
+  {id: 112, q: "Steep slopes tend to produce?", options: ["More infiltration","More runoff","Less erosion","More storage"], correct: 1, explanation: "Water has less contact time to infiltrate and moves faster, causing more runoff and erosion."},
+  {id: 113, q: "Negative effect of excessive runoff?", options: ["Groundwater recharge","Soil erosion","Increased infiltration","Reduced flooding"], correct: 1, explanation: "Causes soil erosion, sedimentation, flooding, nutrient loss, and infrastructure damage."},
+  {id: 114, q: "Saturation overland flow occurs when?", options: ["Rainfall is intense","Soil is already saturated","Slope is steep","Soil is dry"], correct: 1, explanation: "Common near streams and wetlands where water table is at surface."},
+  {id: 115, q: "Discharge equation for a stream is?", options: ["Q = A + V","Q = A - V","Q = A * V","Q = A / V"], correct: 2, explanation: "Q = Cross-sectional Area x Mean Velocity. Units: m³/s."},
+  {id: 116, q: "Unit of stream discharge Q?", options: ["mm","m³/s","kg/m²","N"], correct: 1, explanation: "Volume of water passing a section per unit time."},
+  {id: 117, q: "For A=15m², V=2.5m/s, Q=?", options: ["25","30","37.5","40"], correct: 2, explanation: "15 x 2.5 = 37.5 m³/s"},
+  {id: 118, q: "1mm of rainfall over 1m² equals what volume?", options: ["0.0001 m³","0.001 m³","0.01 m³","0.1 m³"], correct: 1, explanation: "Volume = Area x Depth = 1m² x 0.001m = 0.001m³ or 1 liter."},
+  {id: 119, q: "10mm rainfall on 5000m² gives what volume?", options: ["5 m³","50 m³","500 m³","5000 m³"], correct: 1, explanation: "5000m² x 0.01m = 50m³"},
+  {id: 120, q: "Average residence time of water in atmosphere?", options: ["2 days","9 days","1 month","1 year"], correct: 1, explanation: "Water cycles quickly. Average 9 days before it falls as precipitation."},
+  {id: 121, q: "Average residence time of water in a river?", options: ["9 days","2 weeks","6 months","2 years"], correct: 1, explanation: "About 2 weeks. Much shorter than lakes or groundwater."},
+  {id: 122, q: "Water in deep ocean has residence time of about?", options: ["10 years","100 years","1000 years","3200 years"], correct: 3, explanation: "Deep ocean circulation is very slow. ~3200 years average."},
+  {id: 123, q: "Wetlands act as?", options: ["Flood accelerators","Natural sponges","Heat sources","Pollution sources"], correct: 1, explanation: "They store floodwater and release it slowly, reducing peak flows."},
+  {id: 124, q: "Destroying wetlands increases?", options: ["Drought","Flood risk","Infiltration","Evaporation"], correct: 1, explanation: "Less natural storage capacity means higher flood peaks downstream."},
+  {id: 125, q: "Baseflow in rivers comes from?", options: ["Direct rainfall","Surface runoff","Groundwater","Evaporation"], correct: 2, explanation: "Groundwater seepage sustains river flow during dry periods."},
+  {id: 126, q: "Urbanization typically causes?", options: ["Less runoff","More infiltration","More runoff","Less evaporation"], correct: 2, explanation: "Impervious surfaces like concrete reduce infiltration and increase runoff."},
+  {id: 127, q: "Pan coefficient is used to?", options: ["Convert pan evaporation to lake evaporation","Measure rainfall","Calculate runoff","Find discharge"], correct: 0, explanation: "Pan evaporates more than a lake. Kp < 1 is applied to correct it."},
+  {id: 128, q: "Main factor controlling evaporation rate?", options: ["Wind speed","Soil color","Groundwater","Slope"], correct: 0, explanation: "Wind removes humid air and brings in dry air, increasing evaporation."},
+  {id: 129, q: "Net radiation provides energy for?", options: ["Infiltration","Evaporation","Runoff","Condensation"], correct: 1, explanation: "Solar energy is the main driver of evaporation."},
+  {id: 130, q: "Potential ET is greater than actual ET when?", options: ["Soil is saturated","Soil is dry","It is raining","Temperature is low"], correct: 1, explanation: "When soil moisture is limiting, actual ET drops below potential ET."},
+  {id: 131, q: "Field capacity is water held after?", options: ["Rainfall","Drainage by gravity","Wilting","Evaporation"], correct: 1, explanation: "Water remaining 2-3 days after saturation. Available to plants."},
+  {id: 132, q: "Wilting point is when plants?", options: ["Grow fastest","Cannot extract more water","Transpire most","Store water"], correct: 1, explanation: "Soil water is held too tightly by soil particles for roots to extract."},
+  {id: 133, q: "Available water capacity is between?", options: ["Saturation and field capacity","Field capacity and wilting point","Wilting point and dry","0 and saturation"], correct: 1, explanation: "The amount of water plants can actually use from soil."},
+  {id: 134, q: "Darcy's law describes?", options: ["Evaporation","Groundwater flow","Surface runoff","Rainfall"], correct: 1, explanation: "Q = K * A * dh/dl. Flow through porous media."},
+  {id: 135, q: "Aquifer recharge occurs mainly by?", options: ["Evaporation","Infiltration","Runoff","Transpiration"], correct: 1, explanation: "Water percolates down from surface to water table."},
+  {id: 136, q: "Confined aquifer is bounded by?", options: ["Impermeable layers","River","Lake","Soil"], correct: 0, explanation: "Water is under pressure between two aquitards."},
+  {id: 137, q: "Specific yield is?", options: ["Total porosity","Drainable porosity","Field capacity","Wilting point"], correct: 1, explanation: "Volume of water that drains from rock/soil by gravity."},
+  {id: 138, q: "Transmissivity is important for?", options: ["Well yield","Evaporation","Rainfall","Runoff"], correct: 0, explanation: "T = K * b. Controls how much water a well can deliver."},
+  {id: 139, q: "Cone of depression forms around?", options: ["Lake","Pumping well","River","Dam"], correct: 1, explanation: "Water table drops near a well due to pumping."},
+  {id: 140, q: "Saltwater intrusion occurs in?", options: ["Mountain aquifers","Coastal aquifers","Desert aquifers","All aquifers"], correct: 1, explanation: "Overpumping in coastal areas pulls seawater into freshwater aquifer."},
+  {id: 141, q: "Curve Number method estimates?", options: ["ET","Runoff","Infiltration","Rainfall"], correct: 1, explanation: "SCS-CN method estimates direct runoff from rainfall."},
+  {id: 142, q: "Higher Curve Number means?", options: ["More infiltration","Less runoff","More runoff","Less rainfall"], correct: 2, explanation: "Impervious areas and poor soils have high CN and produce more runoff."},
+  {id: 143, q: "Time of concentration is?", options: ["Rain duration","Travel time from farthest point","Peak time","Baseflow time"], correct: 1, explanation: "Time for water to travel from most distant point to outlet."},
+  {id: 144, q: "Rational formula Q = CiA is used for?", options: ["Large basins","Small urban catchments","Lakes","Groundwater"], correct: 1, explanation: "C=runoff coeff, i=rainfall intensity, A=area. For < 2km²."},
+  {id: 145, q: "Unit hydrograph assumes?", options: ["Nonlinear response","Linear time-invariant system","Constant rainfall","No losses"], correct: 1, explanation: "Watershed response to 1 unit of excess rainfall is linear."},
+  {id: 146, q: "Flood routing is done to?", options: ["Increase peak","Predict peak downstream","Measure rainfall","Estimate ET"], correct: 1, explanation: "Predict how a flood wave changes as it moves through channel or reservoir."},
+  {id: 147, q: "100-year flood has annual exceedance probability of?", options: ["1%","10%","50%","100%"], correct: 0, explanation: "1 in 100 chance of being equaled or exceeded in any given year."},
+  {id: 148, q: "Return period is inversely related to?", options: ["Magnitude","Probability","Duration","Area"], correct: 1, explanation: "Larger floods have longer return periods and lower probability."},
+  {id: 149, q: "Reservoir storage reduces?", options: ["Evaporation","Flood peak","Infiltration","Rainfall"], correct: 1, explanation: "Stores floodwater and releases it slowly to reduce downstream peak."},
+  {id: 150, q: "Dead storage is?", options: ["Water above spillway","Water below outlet","Active supply","Flood control"], correct: 1, explanation: "Water that cannot be withdrawn by gravity. Below lowest outlet."},
+  {id: 151, q: "Evaporation loss from reservoir depends on?", options: ["Depth","Surface area","Volume","Inflow"], correct: 1, explanation: "Larger surface area exposes more water to sun and wind, increasing evaporation loss."},
+  {id: 152, q: "Seepage loss from reservoir goes to?", options: ["Atmosphere","Groundwater","Runoff","Plants"], correct: 1, explanation: "Water leaks through dam foundation and abutments into groundwater."},
+  {id: 153, q: "Sedimentation reduces?", options: ["Inflow","Storage capacity","Outflow","Evaporation"], correct: 1, explanation: "Silt fills reservoir over time, reducing useful storage volume."},
+  {id: 154, q: "Hydropower generation depends on?", options: ["Head and discharge","Rainfall only","Temperature","Soil type"], correct: 0, explanation: "Power = ρgQH * efficiency. Head and flow rate determine energy."},
+  {id: 155, q: "Irrigation water requirement is based on?", options: ["ETc - Effective rainfall","Total rainfall","Runoff","Infiltration"], correct: 0, explanation: "Crop ET minus rainfall that actually enters root zone."},
+  {id: 156, q: "Drip irrigation is most efficient for?", options: ["Rice","Wheat","Vegetables","Maize"], correct: 2, explanation: "Delivers water directly to root zone. Minimizes evaporation and runoff."},
+  {id: 157, q: "Leaching requirement is needed for?", options: ["Salinity control","Flood control","ET estimation","Runoff"], correct: 0, explanation: "Extra water to wash accumulated salts below root zone in irrigated fields."},
+  {id: 158, q: "Drainage coefficient is used for?", options: ["Well design","Drain spacing","Reservoir","Dam"], correct: 1, explanation: "Depth of water to remove per day. Used to design subsurface drains."},
+  {id: 159, q: "Water quality parameter for salinity?", options: ["pH","EC","Turbidity","DO"], correct: 1, explanation: "Electrical Conductivity measures concentration of dissolved salts."},
+  {id: 160, q: "Eutrophication is caused by?", options: ["Nitrogen and Phosphorus","Sediment","Salt","Acid"], correct: 0, explanation: "Nutrient enrichment causes algal blooms and oxygen depletion."},
+  {id: 161, q: "BOD measures?", options: ["Oxygen needed by bacteria","Total solids","Turbidity","pH"], correct: 0, explanation: "Biochemical Oxygen Demand indicates amount of organic pollution."},
+  {id: 162, q: "Turbidity is caused by?", options: ["Dissolved salts","Suspended particles","Temperature","pH"], correct: 1, explanation: "Suspended clay, silt, organic matter scatter light and reduce clarity."},
+  {id: 163, q: "Self-purification of river involves?", options: ["Sedimentation","Aeration and bacteria","Evaporation","Infiltration"], correct: 1, explanation: "Oxygen dissolves and bacteria break down organic matter."},
+  {id: 164, q: "Water treatment step after coagulation?", options: ["Disinfection","Flocculation","Filtration","Aeration"], correct: 1, explanation: "Flocculation forms larger flocs that settle out."},
+  {id: 165, q: "Chlorination is for?", options: ["Remove turbidity","Kill pathogens","Soften water","Remove color"], correct: 1, explanation: "Disinfection to kill bacteria and viruses in drinking water."},
+  {id: 166, q: "Watershed is defined by?", options: ["Political boundary","Drainage divide","Road network","Soil type"], correct: 1, explanation: "Area of land draining to a common outlet or river."},
+  {id: 167, q: "Watershed management aims to?", options: ["Increase runoff","Conserve soil and water","Reduce rainfall","Increase evaporation"], correct: 1, explanation: "Sustainable use of land and water resources in a basin."},
+  {id: 168, q: "Contour bunding is used for?", options: ["Flood control","Soil conservation","Drainage","Irrigation"], correct: 1, explanation: "Earthen embankments along contours slow runoff and reduce erosion on slopes."},
+  {id: 169, q: "Check dam is built in?", options: ["River","Gully","Lake","Well"], correct: 1, explanation: "Small structure in gully to reduce velocity and trap sediment."},
+  {id: 170, q: "Afforestation helps by?", options: ["Increasing runoff","Reducing infiltration","Increasing infiltration","Reducing rainfall"], correct: 2, explanation: "Trees improve soil structure and organic matter, increasing infiltration."},
+  {id: 171, q: "GIS is used in hydrology for?", options: ["Rainfall forecasting","Watershed delineation","Well drilling","Water treatment"], correct: 1, explanation: "Mapping basins, streams, land use, and spatial analysis."},
+  {id: 172, q: "Remote sensing provides data on?", options: ["Groundwater depth","Land use and snow cover","Well yield","Pipe size"], correct: 1, explanation: "Satellite images give basin characteristics and water bodies."},
+  {id: 173, q: "Hydrologic model calibration requires?", options: ["Rainfall data","Observed runoff data","Soil data","All of the above"], correct: 3, explanation: "Adjust model parameters so simulated output matches observed data."},
+  {id: 174, q: "Validation of model uses?", options: ["Same data as calibration","Independent data set","No data","Future data only"], correct: 1, explanation: "Test model performance on data not used in calibration."},
+  {id: 175, q: "Uncertainty in hydrology comes from?", options: ["Data errors","Model structure","Natural variability","All of the above"], correct: 3, explanation: "All three sources contribute to prediction uncertainty."},
+  {id: 176, q: "Water footprint measures?", options: ["Rainfall","Volume of water used","Runoff","Storage"], correct: 1, explanation: "Total volume of freshwater used to produce goods and services."},
+  {id: 177, q: "Virtual water is?", options: ["Groundwater","Water embedded in products","Surface water","Treated water"], correct: 1, explanation: "Water used to produce a product, e.g. 1000L to produce 1kg of wheat."},
+  {id: 178, q: "Integrated Water Resources Management focuses on?", options: ["Single sector","Coordination across sectors","Only supply","Only demand"], correct: 1, explanation: "Holistic approach balancing social, economic and environmental needs."},
+  {id: 179, q: "Climate change may cause?", options: ["Less variability","More extreme events","Constant rainfall","No effect"], correct: 1, explanation: "More intense floods, droughts, and altered precipitation patterns."},
+  {id: 180, q: "Drought index based on precipitation?", options: ["SPI","NDVI","BOD","EC"], correct: 0, explanation: "Standardized Precipitation Index compares rainfall to historical average."},
+  {id: 181, q: "Flood frequency analysis uses?", options: ["Normal distribution","Extreme value distribution","Uniform distribution","Binomial"], correct: 1, explanation: "Gumbel or Log-Pearson Type III for extreme events."},
+  {id: 182, q: "Stage-discharge curve is used to?", options: ["Estimate rainfall","Convert stage to discharge","Measure ET","Find infiltration"], correct: 1, explanation: "Rating curve relates water level to discharge at gauging station."},
+  {id: 183, q: "Weir is used to measure?", options: ["Rainfall","Discharge","Velocity","Infiltration"], correct: 1, explanation: "Head over weir crest is related to flow rate by weir equation."},
+  {id: 184, q: "Current meter measures?", options: ["Rainfall","Water velocity","Water level","Turbidity"], correct: 1, explanation: "Used with cross-section area to calculate discharge."},
+  {id: 185, q: "Water budget provides?", options: ["Qualitative description","Quantitative description of water movement","Weather forecast","Crop yield prediction"], correct: 1, explanation: "Accounting of inputs, outputs and storage change for a basin."},
+  {id: 186, q: "Thiessen polygon method is used for?", options: ["Average rainfall over area","ET estimation","Runoff routing","Soil moisture"], correct: 0, explanation: "Weights rain gauge data by area of influence."},
+  {id: 187, q: "Isohyetal method uses?", options: ["Lines of equal rainfall","Equal area polygons","Time series","Energy balance"], correct: 0, explanation: "Contours of equal precipitation depth drawn on map."},
+  {id: 188, q: "Water year usually starts in?", options: ["January","April","October","July"], correct: 2, explanation: "Oct 1 in many countries to capture full wet season cycle."},
+  {id: 189, q: "Cumulative departure curve shows?", options: ["Rainfall intensity","Surplus and deficit periods","Evaporation rate","Soil type"], correct: 1, explanation: "Plots cumulative deviation from mean to show wet/dry periods."},
+  {id: 190, q: "Interception loss is highest for?", options: ["Grass","Bare soil","Dense forest","Sand"], correct: 2, explanation: "Dense canopy intercepts and evaporates more rainfall."},
+  {id: 191, q: "Throughfall is?", options: ["Rain on leaves","Rain reaching ground through canopy","Runoff","Infiltration"], correct: 1, explanation: "Rain that drips or passes through canopy to ground."},
+  {id: 192, q: "Stemflow is?", options: ["Rain on leaves","Water flowing down tree trunks","Runoff","Infiltration"], correct: 1, explanation: "Rain that flows down stems to base of plant."},
+  {id: 193, q: "Hortonian overland flow occurs when?", options: ["Rainfall intensity > infiltration","Soil is saturated","Snow melts","Groundwater rises"], correct: 0, explanation: "Infiltration-excess runoff common in arid areas."},
+  {id: 194, q: "Groundwater flow velocity depends on?", options: ["Rainfall","Hydraulic conductivity and gradient","Evaporation","Slope"], correct: 1, explanation: "Darcy velocity = K * hydraulic gradient / porosity."},
+  {id: 195, q: "Artesian well flows without pumping because?", options: ["Deep aquifer","Confined aquifer under pressure","Large diameter","High rainfall"], correct: 1, explanation: "Water pressure in confined aquifer pushes water to surface."},
+  {id: 196, q: "Bank storage occurs during?", options: ["Drought","Flood","Dry season","Irrigation"], correct: 1, explanation: "River water temporarily stored in adjacent aquifer during high stage."},
+  {id: 197, q: "Hyporheic zone is?", options: ["Deep aquifer","Area of mixing between river and groundwater","Lake bottom","Reservoir"], correct: 1, explanation: "Subsurface region beneath and beside stream channel."},
+  {id: 198, q: "Tracer study is used to measure?", options: ["Rainfall","Residence time","Evaporation","Infiltration"], correct: 1, explanation: "Dye or isotopes track water movement and time."},
+  {id: 199, q: "Environmental flow is?", options: ["Flood flow","Water for ecosystems","Irrigation water","Drinking water"], correct: 1, explanation: "Minimum flow needed to maintain river ecosystem health."},
+  {id: 200, q: "Water managers estimate evaporation for?", options: ["Crop color","Reservoir operation","Soil texture","Wind speed"], correct: 1, explanation: "To plan water supply, hydropower generation, and storage management."},
+  {id: 201, q: "Hydrograph separates into?", options: ["Baseflow and direct runoff","Rainfall and ET","Infiltration and runoff","Storage and discharge"], correct: 0, explanation: "Baseflow = groundwater contribution. Direct runoff = quick response from surface."},
+  {id: 202, q: "Unit hydrograph duration is?", options: ["1 hour","1 day","1 unit of excess rainfall","1 year"], correct: 2, explanation: "Response of watershed to 1 unit (1cm or 1 inch) of excess rainfall."},
+  {id: 203, q: "Muskingum method is used for?", options: ["Flood routing","ET estimation","Rainfall analysis","Soil moisture"], correct: 0, explanation: "Channel flood routing using storage parameters K and x."},
+  {id: 204, q: "Flood frequency analysis needs?", options: ["Only one year data","Long-term annual maximum series","Rainfall data only","Soil data"], correct: 1, explanation: "Uses annual peak flows to fit probability distribution for design."},
+  {id: 205, q: "Probable maximum precipitation (PMP) is?", options: ["Maximum observed rainfall","Theoretically maximum possible rainfall","Average rainfall","Design rainfall"], correct: 1, explanation: "The greatest depth of precipitation possible for given duration. Used for dams."},
+  {id: 206, q: "Intensity-Duration-Frequency (IDF) curves show?", options: ["Rainfall intensity vs duration for given return period","Runoff vs time","ET vs time","Infiltration vs time"], correct: 0, explanation: "Used for stormwater and drainage design."},
+  {id: 207, q: "Design return period for bridges?", options: ["1 year","10 years","50-100 years","1000 years"], correct: 2, explanation: "Major structures use 50-100 years. Depends on risk and importance."},
+  {id: 208, q: "Spillway design ensures?", options: ["Safe passage of flood","Water supply","Sediment control","Evaporation"], correct: 0, explanation: "To safely release excess water and prevent dam overtopping."},
+  {id: 209, q: "Freeboard in reservoir is?", options: ["Storage below outlet","Space above FWL for waves","Dead storage","Active storage"], correct: 1, explanation: "Extra height above full water level to account for waves and safety."},
+  {id: 210, q: "Sediment trap efficiency depends on?", options: ["Reservoir size and inflow","Rainfall","ET","Wind"], correct: 0, explanation: "Larger, deeper reservoirs with low inflow trap more sediment."},
+  {id: 211, q: "Levee is used for?", options: ["Flood protection","Irrigation","Drainage","ET reduction"], correct: 0, explanation: "Embankment along river to confine flood water."},
+  {id: 212, q: "Floodplain zoning regulates?", options: ["Land use in flood-prone areas","Rainfall intensity","Evaporation","Soil type"], correct: 0, explanation: "Restricts development to reduce flood damage."},
+  {id: 213, q: "Non-structural flood control includes?", options: ["Dams","Levees","Flood forecasting","Channels"], correct: 2, explanation: "Warning systems, evacuation, land use planning, insurance."},
+  {id: 214, q: "Structural flood control includes?", options: ["Floodplain zoning","Land use planning","Levees and dams","Forecasting"], correct: 2, explanation: "Physical structures like dams, levees, channels, reservoirs."},
+  {id: 215, q: "Rainwater harvesting increases?", options: ["Runoff","Infiltration","Evaporation","Floods"], correct: 1, explanation: "Captures rain to recharge groundwater or for direct use."},
+  {id: 216, q: "Watershed protection aims to?", options: ["Increase runoff","Conserve soil and water","Reduce rainfall","Increase sediment"], correct: 1, explanation: "Sustainable management of land and water resources."},
+  {id: 217, q: "Soil moisture deficit is?", options: ["Field capacity - current moisture","Current moisture - wilting point","Rainfall - ET","Infiltration capacity"], correct: 0, explanation: "Amount of water needed to bring soil back to field capacity."},
+  {id: 218, q: "Crop water requirement is?", options: ["ETc + leaching","Rainfall only","ETp","Runoff"], correct: 0, explanation: "Crop ET plus extra for leaching salts if needed."},
+  {id: 219, q: "Irrigation efficiency is?", options: ["Water used by crop / water applied","Water applied / water available","ET / rainfall","Infiltration / rainfall"], correct: 0, explanation: "Ratio of water beneficially used to water delivered. Drip > sprinkler > flood."},
+  {id: 220, q: "Conveyance efficiency is?", options: ["Water delivered / water diverted","Water used / water applied","ET / rainfall","Infiltration efficiency"], correct: 0, explanation: "Accounts for losses in canals and pipes from source to field."},
+  {id: 221, q: "Field application efficiency is?", options: ["Water stored in root zone / water applied","Water applied / ET","Rainfall / runoff","Infiltration / ET"], correct: 0, explanation: "How much of applied water is stored in root zone for crops."},
+  {id: 222, q: "Drainage improves soil by?", options: ["Increasing salinity","Removing excess water","Reducing aeration","Increasing ET"], correct: 1, explanation: "Prevents waterlogging and removes salts, improving aeration."},
+  {id: 223, q: "Subsurface drainage removes?", options: ["Surface water","Excess soil water below surface","Rainfall","Runoff"], correct: 1, explanation: "Tile drains lower water table and remove excess soil water."},
+  {id: 224, q: "Hooghoudt equation is used for?", options: ["Drain spacing","ET calculation","Rainfall intensity","Flood routing"], correct: 0, explanation: "Calculates spacing of subsurface drains based on soil properties."},
+  {id: 225, q: "Water table management aims to?", options: ["Keep it high","Keep it low","Control it for crops","Increase salinity"], correct: 2, explanation: "Maintain optimum depth for crop growth and prevent problems."},
+  {id: 226, q: "Salinity affects?", options: ["Plant growth","Rainfall","Runoff","Infiltration rate"], correct: 0, explanation: "High salts cause osmotic stress, reducing crop yield."},
+  {id: 227, q: "Sodic soils have?", options: ["High Ca++","High Na+","High pH","Low pH"], correct: 1, explanation: "Excess sodium disperses clay, reducing permeability."},
+  {id: 228, q: "Gypsum is used to?", options: ["Increase pH","Reclaim sodic soils","Reduce ET","Increase runoff"], correct: 1, explanation: "Ca++ replaces Na+ on clay, improving soil structure."},
+  {id: 229, q: "Water quality for irrigation depends on?", options: ["Salinity, sodicity, pH","Color only","Temperature only","Turbidity"], correct: 0, explanation: "Affects crop yield, soil health and infiltration."},
+  {id: 230, q: "Point source pollution comes from?", options: ["Agricultural runoff","Industrial discharge pipe","Urban drainage","Erosion"], correct: 1, explanation: "Identifiable source like a pipe or outfall."},
+  {id: 231, q: "Non-point source pollution is?", options: ["From a factory pipe","From urban runoff and agriculture","From sewage","From industry"], correct: 1, explanation: "Diffuse sources like fields, roads, urban areas."},
+  {id: 232, q: "Eutrophication causes?", options: ["Algal blooms","Salinity","Acidity","Turbidity"], correct: 0, explanation: "Excess N and P cause algae growth and oxygen depletion."},
+  {id: 233, q: "Biological treatment of wastewater uses?", options: ["Bacteria","Chemicals","Filtration","Chlorination"], correct: 0, explanation: "Microorganisms break down organic matter."},
+  {id: 234, q: "Trickling filter is a?", options: ["Primary treatment","Secondary treatment","Tertiary","Disinfection"], correct: 1, explanation: "Biofilm on media degrades organics in wastewater."},
+  {id: 235, q: "Activated sludge process is?", options: ["Primary","Secondary","Tertiary","Physical treatment"], correct: 1, explanation: "Suspended microbes treat wastewater aerobically."},
+  {id: 236, q: "WOD (Wasserstein Optimal Distance) is used for?", options: ["Flood routing","Data assimilation","ET estimation","Pipe design"], correct: 1, explanation: "Used in data assimilation and optimization for hydrologic models."},
+  {id: 237, q: "Climate change impacts hydrology via?", options: ["Changing rainfall patterns","Constant temperatures","Less evaporation","More groundwater"], correct: 0, explanation: "Alters precipitation, ET, and frequency of extremes."},
+  {id: 238, q: "Adaptation to climate change includes?", options: ["Building dams only","Drought resistant crops and water conservation","Increasing pollution","Reducing rainfall"], correct: 1, explanation: "Adjustments like efficient irrigation, crop selection, storage."},
+  {id: 239, q: "Mitigation to climate change includes?", options: ["Reducing GHG emissions","Building levees","More irrigation","Deforestation"], correct: 0, explanation: "Actions to reduce greenhouse gas emissions."},
+  {id: 240, q: "Remote sensing in hydrology provides?", options: ["Soil moisture","Snow cover","Land use","All of the above"], correct: 3, explanation: "Satellite data gives spatial info on basin characteristics."},
+  {id: 241, q: "GIS in water resources is used for?", options: ["Watershed delineation","Pipe sizing","Water treatment","Rainfall forecasting"], correct: 0, explanation: "Spatial analysis, mapping, and modeling."},
+  {id: 242, q: "Hydrologic model validation uses?", options: ["Same data as calibration","Independent data set","No data","Future data only"], correct: 1, explanation: "Test model on different time period than calibration."},
+  {id: 243, q: "Uncertainty in models comes from?", options: ["Data","Model structure","Parameters","All of the above"], correct: 3, explanation: "All sources contribute to prediction uncertainty."},
+  {id: 244, q: "Water footprint of a product is?", options: ["Rainfall","Total water used to produce it","Runoff","Storage"], correct: 1, explanation: "Direct + indirect water use in production."},
+  {id: 245, q: "Virtual water trade helps?", options: ["Save water in water-scarce regions","Increase runoff","Reduce rainfall","Increase ET"], correct: 0, explanation: "Importing water-intensive products saves local water."},
+  {id: 246, q: "IWRM stands for?", options: ["Integrated Water Resources Management","International Water Research Model","Irrigation Water Requirement Method","Indian Water Resource Ministry"], correct: 0, explanation: "Holistic approach to water management."},
+  {id: 247, q: "Environmental flow is?", options: ["Flood flow","Water for ecosystems","Irrigation water","Drinking water"], correct: 1, explanation: "Minimum flow needed to maintain river ecosystem."},
+  {id: 248, q: "Tracer study measures?", options: ["Rainfall","Residence time","Evaporation","Infiltration"], correct: 1, explanation: "Dyes or isotopes track water movement and time."},
+  {id: 249, q: "Hyporheic zone is?", options: ["Deep aquifer","Area of mixing between river and groundwater","Lake bottom","Reservoir"], correct: 1, explanation: "Subsurface region beneath and beside stream."},
+  {id: 250, q: "Bank storage occurs during?", options: ["Drought","Flood","Dry season","Irrigation"], correct: 1, explanation: "River water temporarily stored in adjacent aquifer during high stage."},
+  {id: 251, q: "Rating curve relates?", options: ["Rainfall to runoff","Stage to discharge","ET to rainfall","Infiltration to runoff"], correct: 1, explanation: "Used to convert water level readings to discharge at gauging station."},
+  {id: 252, q: "Weir equation is used to measure?", options: ["Rainfall","Discharge","Velocity","Infiltration"], correct: 1, explanation: "Q = C * L * H^1.5 for rectangular weir."},
+  {id: 253, q: "Current meter measures?", options: ["Rainfall","Water velocity","Water level","Turbidity"], correct: 1, explanation: "Velocity measured at different depths, then Q = A*V."},
+  {id: 254, q: "Dilution gauging is used in?", options: ["Large rivers","Small streams","Lakes","Wells"], correct: 1, explanation: "Tracer method for streams where traditional methods are hard."},
+  {id: 255, q: "Water budget equation is?", options: ["P = ET + Q + ΔS","P = ET - Q","Q = P + ET","ΔS = P - ET"], correct: 0, explanation: "Precipitation = ET + Runoff + Change in Storage."},
+  {id: 256, q: "Thiessen polygon method gives?", options: ["Point rainfall","Average areal rainfall","Intensity","Duration"], correct: 1, explanation: "Weights each gauge by area of influence."},
+  {id: 257, q: "Isohyetal method uses?", options: ["Lines of equal rainfall","Equal area polygons","Time series","Energy balance"], correct: 0, explanation: "Contours of equal precipitation drawn and averaged."},
+  {id: 258, q: "Water year starts?", options: ["January 1","April 1","October 1","July 1"], correct: 2, explanation: "Oct 1 - Sep 30 to capture full wet season in many countries."},
+  {id: 259, q: "Mass curve shows?", options: ["Rainfall intensity","Cumulative rainfall vs time","Runoff rate","ET rate"], correct: 1, explanation: "Used for reservoir storage analysis."},
+  {id: 260, q: "Double mass curve checks?", options: ["Rainfall consistency","Runoff","ET","Infiltration"], correct: 0, explanation: "Compares cumulative rainfall at station vs group of stations."},
+  {id: 261, q: "Interception storage is highest for?", options: ["Grass","Bare soil","Forest canopy","Sand"], correct: 2, explanation: "Dense vegetation intercepts more rainfall."},
+  {id: 262, q: "Throughfall is?", options: ["Rain on leaves","Rain reaching ground through canopy","Runoff","Infiltration"], correct: 1, explanation: "Rain that drips through leaves to ground."},
+  {id: 263, q: "Stemflow is?", options: ["Rain on leaves","Water flowing down tree trunks","Runoff","Infiltration"], correct: 1, explanation: "Water channeled down stems to base of plant."},
+  {id: 264, q: "Hortonian overland flow occurs when?", options: ["Rainfall intensity > infiltration","Soil is saturated","Snow melts","Groundwater rises"], correct: 0, explanation: "Infiltration-excess runoff. Common in arid/semi-arid."},
+  {id: 265, q: "Saturation overland flow occurs when?", options: ["Rainfall intensity > infiltration","Soil is saturated","Snow melts","Groundwater rises"], correct: 1, explanation: "Common in humid areas near streams and wetlands."},
+  {id: 266, q: "Darcy's law: v = ?", options: ["K * i","K / i","i / K","K + i"], correct: 0, explanation: "v = K * hydraulic gradient. Describes groundwater flow."},
+  {id: 267, q: "Hydraulic conductivity is highest in?", options: ["Clay","Silt","Sand","Gravel"], correct: 3, explanation: "Gravel has largest pores and highest K."},
+  {id: 268, q: "Specific yield is?", options: ["Total porosity","Drainable porosity","Field capacity","Wilting point"], correct: 1, explanation: "Volume of water that drains by gravity."},
+  {id: 269, q: "Confined aquifer has?", options: ["Water table","Piezometric surface","No water","Only runoff"], correct: 1, explanation: "Water under pressure between impermeable layers."},
+  {id: 270, q: "Artesian well flows due to?", options: ["Pump","Gravity","Pressure in confined aquifer","Rainfall"], correct: 2, explanation: "Water rises above aquifer top due to pressure."},
+  {id: 271, q: "Cone of depression forms near?", options: ["Lake","Pumping well","River","Dam"], correct: 1, explanation: "Water table drawdown around well during pumping."},
+  {id: 272, q: "Saltwater intrusion is a problem in?", options: ["Mountain aquifers","Coastal aquifers","Desert aquifers","All aquifers"], correct: 1, explanation: "Overpumping pulls seawater into freshwater aquifer."},
+  {id: 273, q: "Transmissivity T = ?", options: ["K * b","K / b","b / K","K + b"], correct: 0, explanation: "Hydraulic conductivity x aquifer thickness. Controls well yield."},
+  {id: 274, q: "Storativity is important for?", options: ["Confined aquifers","Unconfined aquifers","Rivers","Lakes"], correct: 0, explanation: "Volume of water released per unit area per unit head decline."},
+  {id: 275, q: "Recharge to aquifer occurs by?", options: ["Evaporation","Infiltration","Runoff","Transpiration"], correct: 1, explanation: "Water percolates down to water table."},
+  {id: 276, q: "Curve Number method estimates?", options: ["ET","Direct runoff","Infiltration","Rainfall"], correct: 1, explanation: "SCS method: Q = (P - Ia)^2 / (P - Ia + S)"},
+  {id: 277, q: "Higher CN means?", options: ["More infiltration","Less runoff","More runoff","Less rainfall"], correct: 2, explanation: "Impervious areas and clay soils have high CN."},
+  {id: 278, q: "Time of concentration is?", options: ["Rain duration","Travel time from farthest point","Peak time","Baseflow time"], correct: 1, explanation: "Time for water to travel from watershed boundary to outlet."},
+  {id: 279, q: "Rational formula Q = CiA used for?", options: ["Large basins","Small urban catchments","Lakes","Groundwater"], correct: 1, explanation: "C=runoff coeff, i=intensity, A=area. < 2km²."},
+  {id: 280, q: "Unit hydrograph assumes?", options: ["Nonlinear","Linear time-invariant","Constant rainfall","No losses"], correct: 1, explanation: "Watershed response is proportional and time invariant."},
+  {id: 281, q: "Clark IUH uses?", options: ["Time-area curve","Rainfall intensity","Soil type","ET"], correct: 0, explanation: "Based on translation and linear reservoir routing."},
+  {id: 282, q: "Nash IUH uses?", options: ["n reservoirs in series","1 reservoir","Time-area","Kinematic wave"], correct: 0, explanation: "Conceptual model with n identical reservoirs."},
+  {id: 283, q: "Flood routing in channel uses?", options: ["Muskingum method","Penman method","Thornthwaite","Darcy"], correct: 0, explanation: "S = K[xI + (1-x)Q] for flood wave propagation."},
+  {id: 284, q: "Reservoir routing uses?", options: ["Level pool method","Muskingum","Darcy","Rational"], correct: 0, explanation: "Assumes horizontal water surface in reservoir."},
+  {id: 285, q: "100-year flood probability?", options: ["1%","10%","50%","100%"], correct: 0, explanation: "1 in 100 chance each year of being exceeded."},
+  {id: 286, q: "Return period and probability are?", options: ["Directly related","Inversely related","Unrelated","Equal"], correct: 1, explanation: "T = 1/p. Larger floods have longer return periods."},
+  {id: 287, q: "Gumbel distribution is used for?", options: ["Rainfall average","Flood frequency","ET","Soil moisture"], correct: 1, explanation: "Extreme value distribution for annual maxima."},
+  {id: 288, q: "Log-Pearson Type III is used by?", options: ["FAO","USGS","WHO","UN"], correct: 1, explanation: "Standard for US flood frequency analysis."},
+  {id: 289, q: "Floodplain is?", options: ["Area of high ground","Area inundated by flood","Dam area","Reservoir"], correct: 1, explanation: "Land adjacent to river subject to flooding."},
+  {id: 290, q: "Levee raises?", options: ["Water quality","Flood stage","Infiltration","ET"], correct: 1, explanation: "Confines flow, so water level rises for same discharge."},
+  {id: 291, q: "Reservoir reduces flood peak by?", options: ["Storage","Increasing rainfall","Reducing ET","Increasing runoff"], correct: 0, explanation: "Stores inflow and releases at lower rate."},
+  {id: 292, q: "Dead storage is?", options: ["Above spillway","Below lowest outlet","Active supply","Flood control"], correct: 1, explanation: "Cannot be withdrawn by gravity."},
+  {id: 293, q: "Active storage is?", options: ["Below outlet","Between dead and FWL","Above FWL","Sediment"], correct: 1, explanation: "Usable water between dead storage and full water level."},
+  {id: 294, q: "Flood control storage is?", options: ["Below outlet","Between FWL and top","Active storage","Dead storage"], correct: 1, explanation: "Space reserved above FWL to store flood inflow."},
+  {id: 295, q: "Sedimentation reduces?", options: ["Inflow","Storage capacity","Outflow","Evaporation"], correct: 1, explanation: "Silt accumulation decreases useful reservoir volume."},
+  {id: 296, q: "Hydropower depends on?", options: ["Head and discharge","Rainfall only","Temperature","Soil"], correct: 0, explanation: "P = ρgQH * efficiency."},
+  {id: 297, q: "Irrigation scheduling is based on?", options: ["Soil moisture","Rainfall forecast","Crop stage","All of the above"], correct: 3, explanation: "Apply water when and how much crop needs."},
+  {id: 298, q: "Drip irrigation efficiency?", options: ["40-50%","60-70%","80-90%","95-100%"], correct: 2, explanation: "High efficiency, low losses to evaporation/runoff."},
+  {id: 299, q: "Sprinkler irrigation is good for?", options: ["Rice","Vegetables and uneven land","Paddy","All crops"], correct: 1, explanation: "Works on undulating land and many crops."},
+  {id: 300, q: "Surface irrigation includes?", options: ["Drip","Sprinkler","Furrow and basin","Subsurface"], correct: 2, explanation: "Water flows over soil surface by gravity."},
+];
+
+let testQuestions = [];
+let userAnswers = {}; // {0: 2, 1: 0}
+let selectedNumQuestions = 0;
+let selectedTimeMinutes = 0;
+let timerInterval = null;
+let timeLeft = 0;
+let currentQ = 0;
+
+function selectQuestions(num, event){
+  selectedNumQuestions = num;
+  document.querySelectorAll('#qNumOptions.btn-time').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  checkReady();
+}
+function selectTime(mins, event){
+  selectedTimeMinutes = mins;
+  document.querySelectorAll('#timeOptions.btn-time').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  checkReady();
+}
+function checkReady(){ if(selectedNumQuestions > 0 && selectedTimeMinutes > 0){ document.getElementById("startBtn").disabled = false; } }
+
+function startTest(){
+  testQuestions = shuffleArray(questionBank).slice(0, selectedNumQuestions);
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("timer").style.display = "block";
+  document.getElementById("questionNav").style.display = "grid";
+  startTimer(selectedTimeMinutes * 60);
+  renderNav();
+  displayQuestions();
+}
+
+function shuffleArray(arr){ let array = [...arr]; for(let i = array.length-1; i > 0; i--){ const j = Math.floor(Math.random() * (i+1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+
+function renderNav() {
+  const nav = document.getElementById('questionNav');
+  nav.innerHTML = "";
+  for(let i = 0; i < testQuestions.length; i++){
+    const btn = document.createElement('button');
+    btn.textContent = i + 1;
+    btn.className = 'btn-q';
+    if(i === currentQ) btn.classList.add('active');
+    if(userAnswers[i]!== undefined) btn.classList.add('answered');
+    btn.onclick = () => goToQuestion(i);
+    nav.appendChild(btn);
+  }
+}
+
+function goToQuestion(qNum) {
+  currentQ = qNum;
+  displayQuestions();
+  renderNav();
+  document.querySelector('.btn-q.active').scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'});
+}
+
+function displayQuestions(){
+  let q = testQuestions[currentQ];
+  let passageHTML = "";
+  if(q.passageId && passages[q.passageId]){
+    const p = passages[q.passageId];
+    passageHTML = `<details class="passage-box" open><summary>${p.title} - Click to Read</summary><div class="passage-content">${p.text}</div></details>`;
+  }
+
+  let html = `<div class="q">
+    ${passageHTML}
+    <p><b>Q${currentQ+1}. ${q.q}</b></p>
+    ${q.options.map((opt, i) => `
+      <label>
+        <input type="radio" name="q${currentQ}" value="${i}" ${userAnswers[currentQ] == i? 'checked' : ''} onchange="saveAnswer(${currentQ}, ${i})">
+        ${opt}
+      </label>
+    `).join('')}
+    <div style="display:flex; justify-content:space-between;">
+      <button class="btn-primary" onclick="prevQ()" ${currentQ==0?'disabled':''}>Previous</button>
+      <button class="btn-primary" onclick="nextQ()" ${currentQ==testQuestions.length-1?'disabled':''}>Next</button>
+    </div>
+  </div>
+  <button class="btn-danger" onclick="submitTest()">Submit Test</button>`;
+  document.getElementById("quiz").innerHTML = html;
+}
+
+function saveAnswer(qIndex, ansIndex){ userAnswers[qIndex] = ansIndex; renderNav(); }
+function nextQ(){ if(currentQ < testQuestions.length-1) goToQuestion(currentQ+1); }
+function prevQ(){ if(currentQ > 0) goToQuestion(currentQ-1); }
+
+function startTimer(seconds){
+  timeLeft = seconds;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft <= 0){ clearInterval(timerInterval); alert("Time's up! Submitting your test automatically."); submitTest(); }
+  }, 1000);
+}
+function updateTimerDisplay(){
+  let mins = Math.floor(timeLeft / 60);
+  let secs = timeLeft % 60;
+  document.getElementById("timer").textContent = `Time Left: ${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+}
+
+// FIXED: ADDED QUESTION REVIEW BACK
+function submitTest(){
+  clearInterval(timerInterval);
+  let correctCount = 0;
+  let reviewHTML = "";
+
+  testQuestions.forEach((q, index) => {
+  const userAnsIndex = userAnswers[index];
+  const isCorrect = userAnsIndex === q.correct;
+  if(isCorrect) correctCount++;
+
+  const userAnswerText = userAnsIndex === undefined ? "Not Answered" : q.options[userAnsIndex];
+  const correctAnswerText = q.options[q.correct];
+  const borderColor = isCorrect ? "green" : "red";
+  const statusText = isCorrect ? "✓ Correct" : "✗ Wrong";
+
+  reviewHTML += `
+    <div class="q" style="border-left: 5px solid ${borderColor}; padding: 12px; margin-bottom: 15px; background: #f8f8f8; border-radius: 8px;">
+      <p><b>Q${index+1}. ${q.q}</b> <span style="color:${borderColor}; float:right;">${statusText}</span></p>
+      <p><b>Your Answer:</b> ${userAnswerText}</p>
+      ${!isCorrect ? `<p style="color:green;"><b>Correct Answer:</b> ${correctAnswerText}</p>` : ''}
+      
+      <div class="explanation" style="background:#e6f7ff; padding:10px; border-radius:6px; margin-top:8px; font-size:14px;">
+        💡 <b>Explanation:</b> ${q.explanation}
+      </div>
+    </div>
+  `;
+});
+  let percent = ((correctCount/testQuestions.length)*100).toFixed(1);
+  let html = `
+    <h2>Test Submitted!</h2>
+    <div class="stats-box">
+      <h3>Score: ${correctCount}/${testQuestions.length} - ${percent}%</h3>
+      <p style="color:green;"><b>Correct:</b> ${correctCount}</p>
+      <p style="color:red;"><b>Wrong/Not Answered:</b> ${testQuestions.length - correctCount}</p>
+    </div>
+    <h3>Question Review</h3>
+    ${reviewHTML}
+    <button class="btn-primary" onclick="location.reload()">Retake Test</button>
+  `;
+  document.getElementById("quiz").innerHTML = html;
+  }
+</script>
+</body>
+</html>
