@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBT Portal</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    body {
+        background: #f5f5f5;
+        padding: 16px;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .welcome {
+        color: #2B6EF6;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        font-size: 14px;
+    }
+
+    .logout-btn {
+        background: #2B6EF6;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .search {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 15px;
+    }
+
+    .search:focus {
+        outline: none;
+        border-color: #2B6EF6;
+    }
+
+    .course-card {
+        background: white;
+        padding: 16px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #eee;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .course-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .course-code {
+        font-weight: 700;
+        font-size: 16px;
+        color: #111;
+        margin-bottom: 4px;
+    }
+
+    .course-action {
+        color: #666;
+        font-size: 14px;
+    }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="welcome">
+            Welcome,<br>
+            <span id="username"></span><br>
+           
+        </div>
+        <div class="controls">
+            
+            <button class="logout-btn" onclick="window.location.href='index.html'">Logout</button>
+        </div>
+    </div>
+
+    <input type="text" class="search" placeholder="Search Course..." id="searchBox" autofocus>
+
+    <div id="courseList">
+        <div class="course-card" onclick="window.location.href='chm212.html'">
+            <div class="course-code">CHM212</div>
+            <div class="course-action">Click to study</div>
+        </div>
+        
+        <div class="course-card" onclick="window.location.href='emt211.html'">
+            <div class="course-code">EMT211</div>
+            <div class="course-action">Click to study</div>
+        </div>
+        
+        <div class="course-card" onclick="window.location.href='emt202.html'">
+            <div class="course-code">EMT202</div>
+            <div class="course-action">Click to study</div>
+        </div>
+        
+        <div class="course-card" onclick="window.location.href='emt203.html'">
+            <div class="course-code">EMT203</div>
+            <div class="course-action">Click to study</div>
+        </div>
+
+        <div class="course-card" onclick="window.location.href='emt204.html'">
+            <div class="course-code">EMT204</div>
+            <div class="course-action">Click to study</div>
+        </div>
+        
+        <div class="course-card" onclick="window.location.href='emt205.html'">
+            <div class="course-code">EMT205</div>
+            <div class="course-action">Click to study</div>
+        </div>
+
+        <div class="course-card" onclick="window.location.href='emt206.html'">
+            <div class="course-code">EMT206</div>
+            <div class="course-action">Click to study</div>
+        </div>
+
+        <div class="course-card" onclick="window.location.href='emt207.html'">
+            <div class="course-code">EMT207</div>
+            <div class="course-action">Click to study</div>
+        </div>
+
+
+    </div>
+<script>
+    // 1. Set username on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const username = localStorage.getItem("username");
+        document.getElementById("username").textContent = username || "Scholar";
+    });
+
+    // 2. Search filter
+    document.getElementById('searchBox').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const cards = document.querySelectorAll('.course-card');
+        
+        cards.forEach(card => {
+            const code = card.querySelector('.course-code').textContent.toLowerCase();
+            card.style.display = code.includes(searchTerm) ? 'block' : 'none';
+        });
+    });
+
+    function openCourse(code, name) {
+        sessionStorage.setItem('currentCourse', JSON.stringify({code, name}));
+        window.location.href = `quiz1.html?course=${code}`
+    }
+    
+    function logout() {
+        localStorage.removeItem("username"); // clear it on logout
+        window.location.href = 'index.html';
+    }
+    function courseList() {
+
+    }
+</script>
+
+</body>
+</html>
