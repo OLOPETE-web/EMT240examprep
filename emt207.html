@@ -48,21 +48,6 @@
   }
 .question-nav::-webkit-scrollbar { width: 8px; }
 .question-nav::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-.explanation { 
-  background: #e6f7ff; 
-  padding: 12px; 
-  border-radius: 8px; 
-  margin-top: 10px; 
-  font-size: 14px;
-  display: none; /* hidden until JS shows it */
-}
-  .review-item {
-  background: #f8f8f8;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-
 
   /* PASSAGE BOX */
 .passage-box { background: #f8f9ff; border: 2px solid #667eea; border-radius: 10px; margin-bottom: 20px; }
@@ -98,7 +83,6 @@
   <div class="timer" id="timer"></div>
   <div class="question-nav" id="questionNav"></div>
   <div id="quiz"></div>
-  <div class="explanation" id="explanation"></div>
 
 <script>
 const passages = {
@@ -107,7 +91,7 @@ const passages = {
 };
 
 const questionBank = [
-  {id: 1, q: "The general water budget equation is?", options: ["P = ET - Q + ΔS","P = ET + Q + ΔS","P + ET = Q + ΔS","Q = P - ET - ΔS"], correct: 1, explanation: "Based on Law of Conservation of Mass. Inputs = Outputs + Change in Storage for any watershed."},
+{id: 1, q: "The general water budget equation is?", options: ["P = ET - Q + ΔS","P = ET + Q + ΔS","P + ET = Q + ΔS","Q = P - ET - ΔS"], correct: 1, explanation: "Based on Law of Conservation of Mass. Inputs = Outputs + Change in Storage for any watershed."},
   {id: 2, q: "What does P represent in the water budget?", options: ["Evapotranspiration","Precipitation","Runoff","Storage"], correct: 1, explanation: "P is Precipitation. It is the main input of water into a basin from rain, snow, hail, etc."},
   {id: 3, q: "What does ET represent?", options: ["Surface runoff","Evapotranspiration","Change in storage","Infiltration"], correct: 1, explanation: "ET is Evapotranspiration. Combined water loss from evaporation and plant transpiration."},
   {id: 4, q: "What does Q represent?", options: ["Precipitation","Evapotranspiration","Surface runoff","Groundwater recharge"], correct: 2, explanation: "Q is Surface runoff. Water that flows over land into streams and rivers."},
@@ -516,27 +500,24 @@ function submitTest(){
   let reviewHTML = "";
 
   testQuestions.forEach((q, index) => {
-  const userAnsIndex = userAnswers[index];
-  const isCorrect = userAnsIndex === q.correct;
-  if(isCorrect) correctCount++;
+    const userAnsIndex = userAnswers[index];
+    const isCorrect = userAnsIndex === q.correct;
+    if(isCorrect) correctCount++;
 
-  const userAnswerText = userAnsIndex === undefined ? "Not Answered" : q.options[userAnsIndex];
-  const correctAnswerText = q.options[q.correct];
-  const borderColor = isCorrect ? "green" : "red";
-  const statusText = isCorrect ? "✓ Correct" : "✗ Wrong";
+    const userAnswerText = userAnsIndex === undefined? "Not Answered" : q.options[userAnsIndex];
+    const correctAnswerText = q.options[q.correct];
+    const borderColor = isCorrect? "green" : "red";
+    const statusText = isCorrect? "✓ Correct" : "✗ Wrong";
 
-  reviewHTML += `
-    <div class="q" style="border-left: 5px solid ${borderColor}; padding: 12px; margin-bottom: 15px; background: #f8f8f8; border-radius: 8px;">
-      <p><b>Q${index+1}. ${q.q}</b> <span style="color:${borderColor}; float:right;">${statusText}</span></p>
-      <p><b>Your Answer:</b> ${userAnswerText}</p>
-      ${!isCorrect ? `<p style="color:green;"><b>Correct Answer:</b> ${correctAnswerText}</p>` : ''}
-      
-      <div class="explanation" style="background:#e6f7ff; padding:10px; border-radius:6px; margin-top:8px; font-size:14px;">
-        💡 <b>Explanation:</b> ${q.explanation}
+    reviewHTML += `
+      <div class="q" style="border-left: 5px solid ${borderColor};">
+        <p><b>Q${index+1}. ${q.q}</b> <span style="color:${borderColor}; float:right;">${statusText}</span></p>
+        <p><b>Your Answer:</b> ${userAnswerText}</p>
+        ${!isCorrect? `<p style="color:green;"><b>Correct Answer:</b> ${correctAnswerText}</p>` : ''}
       </div>
-    </div>
-  `;
-});
+    `;
+  });
+
   let percent = ((correctCount/testQuestions.length)*100).toFixed(1);
   let html = `
     <h2>Test Submitted!</h2>
@@ -550,7 +531,9 @@ function submitTest(){
     <button class="btn-primary" onclick="location.reload()">Retake Test</button>
   `;
   document.getElementById("quiz").innerHTML = html;
-  }
+  document.getElementById("timer").style.display = "none";
+  document.getElementById("questionNav").style.display = "none";
+}
 </script>
 </body>
-  </html>
+</html>
