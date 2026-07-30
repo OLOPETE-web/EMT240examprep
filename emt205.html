@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSC 201 Quiz</title>
+  <style>
+    :root{
+      --bg:#f5f7fa; --card:#ffffff; --accent:#2563eb; --text:#1e293b;
+      --muted:#64748b; --good:#16a34a; --bad:#dc2626;
+    }
+    *{box-sizing:border-box; font-family: system-ui, sans-serif; scroll-behavior: smooth;}
+    body{margin:0; background:var(--bg); color:var(--text);}
+    header{display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:var(--card); box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:10;}
+    select{padding:8px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:var(--text);}
+    button{background:var(--accent); border:none; padding:10px 16px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer;}
+    button.ghost{background:transparent; border:1px solid var(--muted); color:var(--text);}
+   .container{padding:20px; max-width:900px; margin:auto;}
+   .card{background:var(--card); padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+   .hidden{display:none;}
+   .q-nav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; position:sticky; top:60px; background:var(--bg); padding:10px 0; z-index:9;}
+   .q-nav button{padding:6px 10px; background:#fff; color:var(--text); border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;}
+   .q-nav button.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent);}
+   .q-nav button.answered{background:var(--accent); color:#fff; border-color:var(--accent);}
+   .question{font-size:18px; margin-bottom:12px; font-weight:600;}
+   .options{display:grid; gap:8px;}
+   .options label{display:flex; gap:8px; padding:10px; background:#f8fafc; border-radius:8px; cursor:pointer; border:1px solid #e2e8f0;}
+   .options label:hover{background:#eff6ff;}
+   .score-card{background:var(--card); padding:20px; border-radius:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:20px;}
+   .score-card h2{color:var(--accent); margin:0 0 10px 0;}
+   .score-card.stats{display:flex; justify-content:center; gap:20px; margin-top:10px;}
+   .correct-stat{color:var(--good); font-weight:600;}
+   .wrong-stat{color:var(--bad); font-weight:600;}
+   .review-title{text-align:center; color:var(--accent); font-size:20px; font-weight:700; margin:20px 0;}
+   .review-item{padding:16px; border-left:5px solid; margin-bottom:12px; background:var(--card); border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+   .review-item.correct{border-color:var(--good);}
+   .review-item.wrong{border-color:var(--bad);}
+   .review-head{display:flex; justify-content:space-between; align-items:start; margin-bottom:8px; font-weight:600;}
+   .review-status{color:var(--good); font-weight:700;}
+   .review-status.wrong{color:var(--bad);}
+  </style>
+</head>
+<body>
+  <header>
+    <div id="quizTitle">CSC 201 Quiz</div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <div id="timer" style="font-weight:600; color:var(--accent);"></div>
+      <button class="ghost" onclick="goDashboard()">Dashboard</button>
+    </div>
+  </header>
+  <div class="container">
+    <section id="setup">
+      <h2>Test Setup</h2>
+      <div class="card">
+        <label>No of Questions:</label>
+        <select id="qCount"><option>20</option><option>50</option><option>100</option></select><br><br>
+        <label>Time:</label>
+        <select id="time">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+        </select><br><br>
+        <button onclick="startQuiz()">Start Test</button>
+      </div>
+    </section>
+
+    <section id="quiz" class="hidden">
+      <div class="q-nav" id="qNav"></div>
+      <div id="questionsContainer"></div>
+      <div style="text-align:center; margin-top:20px; padding-bottom:40px;">
+        <button onclick="submitQuiz()">Submit Test</button>
+      </div>
+    </section>
+
+    <section id="analysis" class="hidden">
+      <div id="analysisBox"></div>
+      <div style="text-align:center; margin-top:20px;">
+        <button onclick="goDashboard()">Back to Dashboard</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const COURSE_NAME = "EMT 206";
+    const questionBank = [
+    {q: "Alfred Russel Wallace is regarded as the 'Father of Biogeography' primarily because of his work on?", opts: ["Natural Selection only", "Distribution and spread of plants and animals", "Soil formation", "Mineral exploration"], ans: 1, exp: "Wallace studied the distribution and spread of plants and animals extensively, in addition to co-originating Natural Selection with Darwin."},
+  {q: "The study of plant distribution specifically falls under which sub-discipline of biogeography?", opts: ["Zoogeography", "Phytogeography", "Ecological Biogeography", "Analytical Biogeography"], ans: 1, exp: "Phytogeography is the study of plant distribution, while zoogeography deals with animals."},
+  {q: "Which concept describes the interacting complex of soil, plants, animals and their interaction with climate?", opts: ["Ecosystem", "Biotic Complex", "Biosphere", "Pedosphere"], ans: 1, exp: "Biotic complex refers to the interacting complex of soil, plants, animals and their interaction with climate as defined in your notes."},
+  {q: "A key difference between a geographer's and biologist's approach in biogeography is that geographers emphasize?", opts: ["Individual organism physiology", "Spatial and temporal distribution patterns plus abiotic-biotic interrelationships", "Genetic mutation rates", "Cellular structure"], ans: 1, exp: "Geographers study distribution patterns in space/time and abiotic-biotic + man-biosphere relationships, while biologists focus on individual organism aspects."},
+  {q: "The aim of biogeography to examine energy, water and nutrient flow through the soil-vegetation-atmosphere continuum is to understand?", opts: ["Mineral formation", "Biological functioning and diversity of terrestrial ecosystems", "Weather patterns only", "Continental drift"], ans: 1, exp: "This continuum determines the biological functioning and diversity of major terrestrial ecosystems."},
+  {q: "Which branch of biogeography would best explain the current distribution of polar bears in the Arctic using climate and habitat data?", opts: ["Historical Biogeography", "Ecological Biogeography", "Analytical Biogeography", "Conservation Biogeography"], ans: 1, exp: "Ecological biogeography looks at relations between life and the present environmental complex."},
+  {q: "Historical biogeography is most concerned with explaining distribution patterns using?", opts: ["Current rainfall data", "Continental drift and global climatic change", "Soil pH only", "Human population density"], ans: 1, exp: "Historical biogeography considers continental drift, global climatic change and other large-scale factors on long-term evolution."},
+  {q: "Analytical biogeography can be considered a division of which broader branch?", opts: ["Historical Biogeography", "Ecological Biogeography", "Conservation Biogeography", "Phylogeography"], ans: 1, exp: "Analytical biogeography examines where organisms live today and how they spread, and may be considered a division of ecological biogeography."},
+  {q: "Biogeographical regions are delineated primarily based on?", opts: ["Political boundaries", "Similarity of biota composition and evolutionary history", "Soil color", "GDP of region"], ans: 1, exp: "Each region is based on similarity of composition in terms of systematics and evolutionary history of the biota."},
+  {q: "What factor determines the extent and boundaries of biogeographical regions?", opts: ["Human migration", "Changes in climate and movement of continents creating barriers to migration", "Language", "Road networks"], ans: 1, exp: "Boundaries are determined by changes in climate, movement of continents, and physical/climatic barriers to migration."},
+  {q: "Wegener's theory of Continental Drift proposed that all continents were once part of?", opts: ["Gondwana", "Laurasia", "Pangaea", "Eurasia"], ans: 2, exp: "Wegener proposed all present-day continents were once joined in a single supercontinent called Pangaea."},
+  {q: "Why is Mesosaurus fossil evidence compelling for continental drift?", opts: ["It was a marine reptile", "It was freshwater and could not cross oceans", "It could fly", "It lived only in deserts"], ans: 1, exp: "Mesosaurus was freshwater and could not survive in saltwater or travel across oceans, so its presence in SA and Africa suggests they were joined."},
+  {q: "The presence of Lystrosaurus fossils in Africa, India and Antarctica supports Pangaea because?", opts: ["It was aquatic", "It was a land reptile that could not cross oceans", "Its fossils float", "It migrated recently"], ans: 1, exp: "Lystrosaurus was land-dwelling and could not cross oceans, supporting a connected landmass."},
+  {q: "Glossopteris is significant evidence for continental drift because?", opts: ["It had light seeds dispersed by wind", "It had heavy seeds that could not disperse across oceans", "It was marine algae", "It grew only in tropics"], ans: 1, exp: "Glossopteris produced heavy seeds that could not be dispersed across oceans, yet is found across 5 southern continents."},
+  {q: "The distribution of Permian fossil forests with identical vegetation across Gondwana continents demonstrates?", opts: ["Recent human planting", "Convergent evolution", "Former continuous landmass with similar climate", "Ocean currents"], ans: 2, exp: "Identical vegetation patterns align when continents are fitted together, showing former continuous landmass."},
+  {q: "Finding coal deposits in Antarctica supports continental drift because?", opts: ["Antarctica is currently tropical", "Coal forms in warm tropical environments, indicating Antarctica moved from tropics", "Coal was imported", "Volcanoes formed it"], ans: 1, exp: "Coal forms in warm tropical environments. Its presence in Antarctica shows it drifted from tropical to polar zone."},
+  {q: "Wegener argued oceans are strong barriers to migration for?", opts: ["Marine fish", "Land animals and plants", "Birds", "Plankton"], ans: 1, exp: "Oceans are strong barriers to migration of land animals and plants, making identical fossils unlikely without land connection."},
+  {q: "Which combination best describes biogeography as a discipline?", opts: ["Purely biological", "Purely geographical", "Both biological and geographical", "Neither biological nor geographical"], ans: 2, exp: "Biogeography is both biological and geographical as it studies spatial distribution and biological processes."},
+  {q: "The impact of human activity on biogeochemical cycles through air pollution and CO2 increase is a focus of biogeography to assess?", opts: ["Soil color", "Effects on ecosystem integrity", "Rock types", "Mineral prices"], ans: 1, exp: "Biogeography aims to determine impact of humans on ecosystems including via air pollution and climate change."},
+  {q: "Fluvisols are most likely to be found in which geomorphological setting?", opts: ["Volcanic slopes", "River floodplains with alluvial deposits", "Desert dunes", "Mountain peaks"], ans: 1, exp: "Fluvisols are formed from alluvial deposits, typically found in river floodplains."},
+  {q: "Andosols present an agricultural challenge due to high phosphorus fixation. This is directly related to their?", opts: ["High salinity", "Volcanic ash parent material", "Organic content", "Arid climate"], ans: 1, exp: "Andosols are associated with volcanic ash which causes high phosphorus retention."},
+  {q: "Chernozems are highly fertile due to accumulation of organic matter under?", opts: ["Rainforest", "Grassland vegetation", "Desert shrubs", "Coniferous forest"], ans: 1, exp: "Chernozems are fertile grassland soils rich in organic matter."},
+  {q: "Calcisols accumulate calcium carbonate primarily because of?", opts: ["High rainfall", "Arid and semi-arid climate with limited leaching", "Volcanic activity", "Glacial deposition"], ans: 1, exp: "Calcisols form in arid/semi-arid areas where evaporation exceeds leaching, causing CaCO3 accumulation."},
+  {q: "Lixisols and Luvisols both have clay illuviation, but differ mainly in?", opts: ["Parent material", "Base saturation", "Topography", "Time"], ans: 1, exp: "Lixisols have low base saturation while Luvisols have higher base saturation."},
+  {q: "Histosols dominate in wetlands because?", opts: ["High erosion", "Waterlogged conditions slow decomposition of organic matter", "High temperature", "Volcanic ash"], ans: 1, exp: "Waterlogged conditions in wetlands slow decomposition, leading to organic matter accumulation in Histosols."},
+  {q: "Anthrosols are critical for studying human impact because they?", opts: ["Form naturally", "Reflect long-term human modification like terracing and irrigation", "Have no nutrients", "Are only found in deserts"], ans: 1, exp: "Anthrosols are significantly modified by human activity."},
+  {q: "A cactus having spines and waxy cuticle represents which combination?", opts: ["Behavioral only", "Structural and Physiological adaptation to aridity", "Historical adaptation", "No adaptation"], ans: 1, exp: "Spines reduce water loss and deter herbivory - structural. Waxy cuticle reduces transpiration - physiological."},
+  {q: "Migration of birds to avoid winter is classified as?", opts: ["Structural adaptation", "Physiological adaptation", "Behavioral adaptation", "Genetic drift"], ans: 2, exp: "Migration is a behavioral adaptation to environmental stress."},
+  {q: "Freeze-thaw weathering in alpine regions is effective because?", opts: ["Acid rain", "Water expands 9% upon freezing exerting pressure", "Wind abrasion", "Plant roots"], ans: 1, exp: "Water expands on freezing, exerting pressure to physically break rocks."},
+  {q: "Chemical weathering of feldspar to kaolinite is primarily driven by?", opts: ["Abrasion", "Hydrolysis", "Oxidation", "Carbonation only"], ans: 1, exp: "Hydrolysis is the main reaction in chemical weathering of feldspar."},
+  {q: "Topography influences pedogenesis by controlling?", opts: ["Temperature only", "Drainage, erosion and material deposition", "Wind speed", "Human population"], ans: 1, exp: "Topography controls water movement, thus affecting erosion, deposition and drainage."},
+  {q: "Soil formation is called pedogenesis and involves interaction of 5 factors. Which is NOT one?", opts: ["Parent material", "Time", "GDP", "Organisms"], ans: 2, exp: "The 5 factors are parent material, climate, topography, organisms, time."},
+  {q: "Erosion has a dual role in pedogenesis by?", opts: ["Only destroying soil", "Removing weathered material but exposing fresh parent material", "Adding organic matter", "Increasing pH"], ans: 1, exp: "Erosion removes material but also exposes new rock to weathering."},
+  {q: "Reconnaissance survey is cost-effective in mineral exploration because?", opts: ["It uses drilling", "It covers large areas with low-cost remote sensing", "It guarantees ore", "It requires no experts"], ans: 1, exp: "Reconnaissance uses maps and satellite images to cover large areas cheaply."},
+  {q: "Geophysical methods are used before drilling to?", opts: ["Measure soil pH", "Detect subsurface physical property contrasts to narrow targets", "Count trees", "Predict weather"], ans: 1, exp: "Geophysics measures magnetism, resistivity etc to identify anomalies before expensive drilling."},
+  {q: "Exploratory drilling is necessary even after geophysics because?", opts: ["To confirm tonnage, grade and continuity", "To find water", "To map roads", "It is cheaper"], ans: 0, exp: "Drilling provides direct samples to confirm economic viability of deposit."},
+  {q: "Land degradation as an impact of mining is primarily due to?", opts: ["Air emissions", "Vegetation clearance and topsoil removal", "Noise", "Water use"], ans: 1, exp: "Clearing vegetation and removing topsoil causes land degradation."},
+  {q: "Acid mine drainage occurs because mine tailings often contain?", opts: ["Carbonates", "Sulfides that oxidize to sulfuric acid", "Organic matter", "Salt"], ans: 1, exp: "Sulfide minerals in tailings oxidize to produce sulfuric acid."},
+  {q: "Lack of technology in developing countries hinders mineral exploration by?", opts: ["Reducing labor", "Limiting accurate detection of subsurface deposits", "Increasing ore grade", "Causing rainfall"], ans: 1, exp: "Lack of remote sensing/geophysical tools limits accurate detection."},
+  {q: "A delta environment is classified as transitional because?", opts: ["It is only river", "It is only marine", "It integrates fluvial deposition with marine processes", "It is glacial"], ans: 2, exp: "Deltas form at interface of river and sea, integrating both processes."},
+  {q: "Glacial environments produce unsorted deposits called till because?", opts: ["Water sorts them", "Ice transports without sorting", "Wind sorts them", "Gravity sorts them"], ans: 1, exp: "Glaciers transport and deposit material without sorting."},
+  {q: "Lead exposure causing learning disabilities in children is an example of?", opts: ["Essentiality", "Dose-dependent neurotoxicity", "Bioaccumulation only", "No effect"], ans: 1, exp: "Lead is toxic at certain doses, causing neurological damage especially in children."},
+  {q: "Minamata disease from mercury demonstrates?", opts: ["Bioaccumulation only", "Biomagnification up aquatic food chain", "Phytoremediation", "Chemical weathering"], ans: 1, exp: "Mercury increased in concentration up the food chain leading to human poisoning."},
+  {q: "Cadmium and Lead are grouped as toxic metals primarily due to?", opts: ["Their color", "Kidney damage and other health effects", "Their use in fertilizer", "Their abundance"], ans: 1, exp: "Both cause kidney damage and other toxic effects."},
+  {q: "Phytoremediation is sustainable for metal-contaminated soils because?", opts: ["It burns soil", "Plants extract or stabilize metals", "It adds chemicals", "It is fast"], ans: 1, exp: "Plants uptake or stabilize metals, making it eco-friendly."},
+  {q: "William Smith is called 'Father of English Geology' for?", opts: ["Discovering DNA", "Creating first nationwide geological map", "Finding oil", "Naming Pangaea"], ans: 1, exp: "William Smith created the first nationwide geological map in late 18th century."},
+  {q: "EGMT uses non-invasive methods primarily to?", ops: ["Destroy habitats", "Characterize subsurface for hazards and groundwater without drilling", "Mine minerals", "Predict stock market"], ans: 1, exp: "EGMT characterizes surface/subsurface for hazards, aquifers, contamination using non-invasive methods."},
+  {q: "GPR is preferred for mapping shallow utilities because?", opts: ["It measures magnetism", "High-frequency EM waves image shallow interfaces", "It measures gravity", "It is used in deep sea"], ans: 1, exp: "GPR emits high-frequency EM waves ideal for shallow subsurface imaging."},
+  {q: "ERT works better than GPR in clay soils because?", opts: ["Clay attenuates radar but conducts electricity", "Clay is magnetic", "Clay is radioactive", "Clay reflects light"], ans: 0, exp: "Clay has high conductivity which attenuates GPR but ERT measures resistivity."},
+  {q: "EM scanners measure ground conductivity in mS/m to map?", opts: ["Faults only", "Soil moisture and geological formations", "Temperature", "Mineral color"], ans: 1, exp: "EM scanners measure conductivity which correlates with soil moisture and geology."},
+  {q: "Magnetometers are effective for mapping faults in crystalline basement because?", opts: ["They detect water", "Faults disrupt magnetic signatures of magnetic rocks", "They measure temperature", "They are cheap"], ans: 1, exp: "Faults cause anomalies in magnetic field of igneous/metamorphic rocks."},
+  {q: "A Brunton compass measures strike and dip to determine?", opts: ["Rock age", "3D orientation of strata for structural analysis", "Soil pH", "Water depth"], ans: 1, exp: "Strike and dip define spatial orientation of rock layers."},
+  {q: "LiDAR is superior in forested terrain for landslide mapping because?", opts: ["It is cheaper", "Laser penetrates canopy to create bare-earth DEM", "It measures chemistry", "It works underwater"], ans: 1, exp: "LiDAR penetrates vegetation to map ground surface."},
+  {q: "GIS integrates geological mapping data to?", opts: ["Replace fieldwork", "Analyze spatial relationships and visualize layers", "Drill boreholes", "Measure gravity"], ans: 1, exp: "GIS stores, analyzes and visualizes spatial and geographic data."},
+  {q: "The O horizon in soil profile consists of?", opts: ["Bedrock", "Leaf litter and decomposed organic matter", "Clay", "Sand"], ans: 1, exp: "O horizon is organic layer of leaf litter."},
+  {q: "The E horizon is characterized by?", opts: ["Accumulation", "Leaching of organics and sesquioxides", "Bedrock", "High salt"], ans: 1, exp: "E horizon is eluviated where materials are leached out."},
+  {q: "Materials leached from E horizon accumulate in?", opts: ["O horizon", "A horizon", "B horizon", "R horizon"], ans: 2, exp: "Illuviation occurs in B horizon."},
+  {q: "The R horizon represents?", opts: ["Topsoil", "Subsoil", "Parent material", "Bedrock"], ans: 3, exp: "R horizon is solid unweathered bedrock."},
+  {q: "Fault lines on geological maps are shown as?", opts: ["Blue lines", "Black lines", "Red dots", "Green areas"], ans: 1, exp: "Black lines represent faults/breaks in crust."},
+  {q: "Stratigraphy on a geological map shows?", opts: ["Population", "Sequence and age of rock layers", "Weather", "Roads"], ans: 1, exp: "Stratigraphy shows sequence and age relationships."},
+  {q: "First step in geological mapping is preparation to?", opts: ["Drill", "Gather data and plan fieldwork", "Analyze", "Construct map"], ans: 1, exp: "Preparation involves gathering data and planning."},
+  {q: "Geological mapping assesses natural hazards by?", opts: ["Predicting stock market", "Identifying fault lines and unstable rocks", "Counting animals", "Measuring rainfall"], ans: 1, exp: "Maps identify faults and unstable areas to predict landslides/earthquakes."},
+  {q: "Urban planning uses geological maps to?", opts: ["Locate restaurants", "Determine land stability for construction", "Map traffic", "Design fashion"], ans: 1, exp: "Maps assess suitability and risks for construction."},
+  {q: "Environmental conservation uses geological maps to manage?", opts: ["Natural habitats via soil and groundwater data", "Airlines", "Internet", "Sports"], ans: 0, exp: "Maps show features influencing ecosystems for habitat management."},
+  {q: "Depth of Investigation in geophysics depends on?", opts: ["Color of soil", "Method, instrumentation and site properties", "Time of day", "Number of people"], ans: 1, exp: "DOI depends on method, instruments and subsurface properties."},
+  {q: "A hand lens is used in field for?", opts: ["Navigation", "Detailed examination of rock texture and minerals", "Measuring distance", "Testing water"], ans: 1, exp: "Hand lens magnifies for texture and mineral ID."},
+  {q: "Why is mineral exploration a high-risk venture?", opts: ["Low cost", "High cost with no guarantee of economic discovery", "Too much data", "Fast results"], ans: 1, exp: "High cost and uncertainty of finding viable deposits."},
+  {q: "Difficult terrain challenge in exploration increases?", opts: ["Data accuracy", "Cost and logistical difficulty", "Ore grade", "Rainfall"], ans: 1, exp: "Mountains/swamps make access and surveys hard."},
+  {q: "Political instability affects mineral exploration by?", opts: ["Increasing ore", "Creating uncertainty and delays", "Improving technology", "Reducing cost"], ans: 1, exp: "Unstable policies and laws delay projects."},
+  {q: "Biomagnification differs from bioaccumulation in that?", opts: ["They are same", "Biomagnification increases up trophic levels", "Bioaccumulation is up food chain", "Neither occurs"], ans: 1, exp: "Biomagnification is increase at each trophic level."},
+  {q: "Zinc and Copper are essential but toxic at high doses, showing?", opts: ["No effect", "Dose-response relationship", "They are never needed", "They are always toxic"], ans: 1, exp: "Essentiality at low dose, toxicity at high dose."},
+  {q: "Air pollution control in mining uses electrostatic precipitators for?", opts: ["Water", "Dust and particulates", "Noise", "Soil"], ans: 1, exp: "Used to control airborne dust from mining."},
+  {q: "Community displacement is a social impact of?", opts: ["Weathering", "Mineral development", "Soil formation", "Adaptation"], ans: 1, exp: "Mining can displace communities and farmlands."},
+  {q: "The soil-vegetation-atmosphere continuum is studied in biogeography to understand?", opts: ["Mineral prices", "Ecosystem functioning", "Rock types", "Ocean currents"], ans: 1, exp: "Flow through continuum determines ecosystem function."},
+  {q: "Why are identical fossils on separate continents not due to coincidence?", opts: ["Oceans prevent migration", "Evolution is too fast", "Wind carried them", "Humans planted them"], ans: 0, exp: "Oceans are barriers, so identical land species suggest former connection."},
+  {q: "Cambisols are considered young because?", opts: ["High organic matter", "Weak horizon development", "High salt", "Volcanic origin"], ans: 1, exp: "Cambisols have incipient horizon development."},
+  {q: "In podzolization, the E horizon loses?", opts: ["Sand", "Organic matter and Fe/Al oxides", "Bedrock", "Salt"], ans: 1, exp: "Leaching removes organics and sesquioxides to B horizon."},
+  {q: "GNSS/GPS improves geological mapping by?", opts: ["Identifying minerals", "Providing precise coordinates for samples", "Measuring magnetism", "Drilling"], ans: 1, exp: "GPS pinpoints exact locations of outcrops/samples."},
+  {q: "Why are transitional environments like estuaries highly productive?", opts: ["No nutrients", "Mixing of land and sea nutrients", "Low biodiversity", "High salinity only"], ans: 1, exp: "Mixing of freshwater and marine nutrients supports high productivity."},
+  {q: "The expansion of agro-ecosystems is a human impact studied in biogeography due to?", opts: ["Decreasing population", "Increasing world population", "Less food", "No effect"], ans: 1, exp: "Biogeography examines impact of expanding agriculture due to population growth."},
+  {q: "Which metal is associated with Minamata disease?", opts: ["Lead", "Mercury", "Cadmium", "Arsenic"], ans: 1, exp: "Mercury poisoning caused Minamata disease."},
+  {q: "Arsenic is called 'King of poisons' and causes?", opts: ["Stronger bones", "Skin lesions and cancer", "Better vision", "Increased appetite"], ans: 1, exp: "Arsenic causes skin lesions and cancer."},
+  {q: "In geological mapping, data analysis involves?", opts: ["Singing", "Interpreting features and geological history", "Drilling", "Mining"], ans: 1, exp: "Data analysis interprets collected field data."},
+  {q: "Why is time important in pedogenesis?", opts: ["It has no effect", "Allows horizon development and organic accumulation", "It increases erosion", "It decreases climate"], ans: 1, exp: "Time allows weathering and soil development processes."},
+  {q: "Which is a control measure for metal pollution at industrial source?", opts: ["PPE", "Effluent treatment before discharge", "More mining", "Open dumping"], ans: 1, exp: "Treating effluents prevents metals entering environment."},
+  {q: "The presence of glacial deposits in tropical India suggests?", opts: ["India is currently glacial", "India drifted from polar to tropical zone", "Glaciers formed recently", "No drift occurred"], ans: 1, exp: "Glacial deposits in tropics indicate continental movement across climate zones."},
+  {q: "Island biogeography predicts larger islands have more species because?", opts: ["More extinction", "Larger habitat and lower extinction rate", "Less immigration", "No effect"], ans: 1, exp: "Larger area supports more species and lower extinction."},
+  {q: "Why is ground-truthing necessary in EGMT?", opts: ["To replace satellites", "To validate remote/geophysical data with field observation", "To increase cost", "To slow mapping"], ans: 1, exp: "Field tools verify what remote methods indicate."},
+  {q: "Climate change impact in biogeography includes?", opts: ["Soil color change", "Effects on distribution via CO2 and temperature", "Rock formation", "Mineral exploration"], ans: 1, exp: "Climate change alters species distribution and ecosystem function."},
+  {q: "The main aim of conservation biogeography is?", opts: ["Mining", "Preserving biodiversity and managing ecosystems", "Urban planning", "Oil drilling"], ans: 1, exp: "Conservation biogeography focuses on biodiversity preservation."},
+  {q: "Why are geological maps important for resource management?", opts: ["To locate minerals, oil and gas", "To count people", "To measure temperature", "To design clothes"], ans: 0, exp: "Maps help locate and manage natural resources."},
+  {q: "In EGMT, non-invasive methods are preferred for?", opts: ["Mining", "Assessing hazards and contamination without disturbance", "Construction", "Farming"], ans: 1, exp: "Non-invasive methods assess subsurface without damaging site."},
+  {q: "The study of biogeography at the interface of disciplines includes?", opts: ["Only biology", "Biology, geography, geology, climatology etc", "Only chemistry", "Only physics"], ans: 1, exp: "Biogeography integrates multiple disciplines."},
+
+  {q: "Alfred Russel Wallace's contribution to biogeography is distinct from Darwin's because Wallace specifically emphasized?", opts: ["Genetic mutation", "Geographical distribution and spread of organisms", "Cell theory", "Chemical evolution"], ans: 1, exp: "Wallace spent extended periods studying the distribution and spread of plants and animals, making him the Father of Biogeography."},
+  {q: "The term 'biotic complex' in biogeography is critical because it explains?", opts: ["Soil color only", "Interaction of soil, plants, animals and climate", "Rock types", "Mineral deposits"], ans: 1, exp: "Biotic complex is the interacting complex of soil, plants, animals and the interaction of plants and animals with climate."},
+  {q: "Why do geographers in biogeography place more emphasis on reciprocal relationships between man and biosphere compared to biologists?", opts: ["Biologists don't study humans", "Geographers analyze spatial impacts of human activity on ecosystems", "Biologists study only cells", "Geographers ignore organisms"], ans: 1, exp: "Geographers emphasize man-biosphere reciprocal relationships while biologists focus on individual organism physiology/behavior."},
+  {q: "The aim of biogeography to predict relations between species patterns and abiotic/biotic processes relies on?", opts: ["Subjective opinions", "Objective empirical observations to generate hypotheses", "Historical texts only", "Economic data"], ans: 1, exp: "Biogeography uses objective empirical observations to generate research hypotheses that make predictions."},
+  {q: "Human impact on global biogeochemical cycles via acid deposition is studied in biogeography to assess effects on?", opts: ["Stock market", "Ecosystem integrity", "Rock hardness", "Ocean depth"], ans: 1, exp: "Biogeography examines human impacts like air pollution and acid deposition on ecosystem integrity."},
+  {q: "Analytical biogeography differs from historical biogeography in that it focuses on?", opts: ["Continental drift", "Current distribution and dispersal mechanisms", "Fossil record only", "Future climate"], ans: 1, exp: "Analytical examines where organisms live today and how they spread, while historical considers continental drift and long-term evolution."},
+  {q: "Ecological biogeography is best applied to understand why mangroves are restricted to coastal saline environments due to?", opts: ["Continental drift", "Present environmental complex of salinity and tides", "Glaciation", "Volcanic activity"], ans: 1, exp: "Ecological biogeography looks at relations between life and the present environmental complex."},
+  {q: "Biogeographical region boundaries are dynamic over geological time because they are determined by?", opts: ["Political wars", "Changes in climate and continental movement", "Language changes", "Population density"], ans: 1, exp: "Boundaries are determined by changes in climate and movement of continents with accompanying barriers to migration."},
+  {q: "The concept of Pangaea is central to historical biogeography because it explains?", opts: ["Current weather", "Disjunct distributions of identical fossils", "Soil formation", "Mineral exploration"], ans: 1, exp: "Pangaea explains why identical fossils like Glossopteris are found on continents now separated by oceans."},
+  {q: "Mesosaurus provides strong evidence for continental drift over other fossils because its freshwater habitat meant?", opts: ["It could swim oceans", "Ocean crossing was impossible", "It flew", "It was marine"], ans: 1, exp: "As a freshwater reptile it could not survive in saltwater, so presence in SA and Africa requires land connection."},
+  {q: "The distribution of Glossopteris across 5 Gondwana continents is more compelling than animal fossils because?", opts: ["Plants evolve faster", "Heavy seeds cannot disperse across oceans", "Plants are older", "Plants are smaller"], ans: 1, exp: "Glossopteris produced heavy seeds that could not be dispersed across oceans, requiring land connection."},
+  {q: "Finding glacial tillites in present-day tropical India and Africa supports continental drift by showing?", opts: ["Climate has always been same", "Continents moved across climate zones", "Ice ages only occurred in tropics", "No drift occurred"], ans: 1, exp: "Glacial deposits in tropics show continents have moved from polar to tropical zones."},
+  {q: "Wegener rejected coincidence as explanation for intercontinental fossil similarity because?", opts: ["Oceans are weak barriers", "Oceans are strong barriers to land organism migration", "Birds carried them", "Humans transported them"], ans: 1, exp: "Oceans are strong barriers to migration of land animals and plants."},
+  {q: "Fluvisols have high agricultural potential but are prone to flooding because they form in?", opts: ["Deserts", "River floodplains with alluvial deposits", "Volcanic areas", "Mountains"], ans: 1, exp: "Fluvisols form from alluvial deposits in river floodplains which are flood-prone."},
+  {q: "Andosols' high phosphorus retention is problematic for agriculture and is attributed to?", opts: ["High sand content", "Amorphous materials in volcanic ash", "High salinity", "Low organic matter"], ans: 1, exp: "Andosols from volcanic ash have amorphous materials that fix phosphorus."},
+  {q: "Chernozems under grasslands develop thick A horizons due to?", opts: ["Low organic input", "High organic matter input and calcium from grass roots", "Leaching", "Erosion"], ans: 1, exp: "Grassland vegetation contributes high organic matter and calcium, forming fertile Chernozems."},
+  {q: "Calcisols are dominant in arid regions because low rainfall causes?", opts: ["High leaching", "Accumulation of calcium carbonate near surface", "Podzolization", "Laterization"], ans: 1, exp: "In arid areas evaporation exceeds leaching, causing CaCO3 accumulation = calcification."},
+  {q: "The difference between Lixisols and Luvisols in tropical agriculture is important because?", opts: ["Color", "Lixisols have lower base saturation thus lower fertility", "Depth", "Parent rock"], ans: 1, exp: "Lixisols have low base saturation making them less fertile than Luvisols despite similar clay content."},
+  {q: "Histosols are excluded from most crop production due to?", opts: ["High salinity", "Waterlogging and low bearing capacity", "High temperature", "Low organic matter"], ans: 1, exp: "Histosols form in wetlands and are waterlogged with poor drainage for crops."},
+  {q: "Anthrosols in rice paddies demonstrate human impact through?", opts: ["Natural flooding", "Terracing, irrigation and long-term cultivation", "Volcanism", "Glaciation"], ans: 1, exp: "Anthrosols reflect long-term human modification like terracing and irrigation."},
+  {q: "Structural adaptation in desert foxes with large ears serves to?", opts: ["Dig burrows", "Increase heat dissipation", "Attract mates", "Store water"], ans: 1, exp: "Large ears are structural adaptations for heat dissipation in arid environments."},
+  {q: "Physiological adaptation in camels to tolerate dehydration involves?", opts: ["Migration", "Ability to concentrate urine and tolerate body temp fluctuations", "Hibernation", "Thick fur"], ans: 1, exp: "Concentrated urine and temp tolerance are physiological adaptations to water scarcity."},
+  {q: "Behavioral adaptation in social insects to survive cold involves?", opts: ["Growing fur", "Clustering and reducing activity", "Changing diet", "Thick skin"], ans: 1, exp: "Clustering is a behavioral adaptation to conserve heat."},
+  {q: "Physical weathering dominates in deserts over chemical weathering because?", opts: ["High rainfall", "Large diurnal temperature fluctuations", "High humidity", "Dense vegetation"], ans: 1, exp: "Deserts have large temperature swings causing thermal stress and physical breakdown."},
+  {q: "Chemical weathering is most intense in tropics due to?", opts: ["Low temperature", "High temperature + moisture + biological activity", "Low pressure", "High wind"], ans: 1, exp: "Heat and moisture accelerate chemical reactions in tropical weathering."},
+  {q: "Biological weathering by tree roots contributes to pedogenesis by?", opts: ["Adding salt", "Physically breaking rock and adding organic acids", "Reducing temperature", "Increasing wind"], ans: 1, exp: "Roots break rock physically and exude acids that chemically weather minerals."},
+  {q: "Parent material influences soil by determining?", opts: ["Rainfall", "Initial mineral composition and texture", "Wind speed", "Human population"], ans: 1, exp: "Parent material provides the minerals and texture for soil development."},
+  {q: "Climate as a soil forming factor acts primarily through?", opts: ["Water and temperature effects on weathering and leaching", "Wind only", "Gravity only", "Human activity"], ans: 0, exp: "Climate controls water availability and temperature which drive weathering processes."},
+  {q: "Time factor in pedogenesis means that two soils with identical other factors will differ if?", opts: ["One is older", "One is younger", "Both are same age", "Age doesn't matter"], ans: 0, exp: "Older landscapes have more time for horizon development and profile differentiation."},
+  {q: "Reconnaissance survey uses satellite imagery primarily to?", opts: ["Drill boreholes", "Identify large-scale geological structures and potential target areas", "Measure soil pH", "Count trees"], ans: 1, exp: "Reconnaissance covers large areas to identify structures and potential targets cheaply."},
+  {q: "Geological mapping is done before geophysics in exploration to?", opts: ["Increase cost", "Provide surface context for interpreting geophysical anomalies", "Reduce data", "Avoid drilling"], ans: 1, exp: "Surface mapping provides context to interpret subsurface geophysical data."},
+  {q: "Geochemical analysis is targeted after geophysics because?", opts: ["It is random", "It focuses on anomalies identified by geophysics", "It is cheaper than mapping", "It replaces drilling"], ans: 1, exp: "Geochemistry follows up on geophysical anomalies to confirm mineralization."},
+  {q: "The main environmental risk of improper mine waste disposal is?", opts: ["Noise", "Long-term leaching of toxic metals into soil and water", "Dust", "Visual impact"], ans: 1, exp: "Tailings can leach metals for decades causing irreversible contamination."},
+  {q: "Climate change impact from mining fossil fuels occurs due to?", opts: ["Dust", "Release of CO2 and methane", "Noise", "Water use"], ans: 1, exp: "Extraction and burning of fossil fuels releases greenhouse gases."},
+  {q: "Security challenges in mineral exploration in some regions include?", opts: ["Low cost", "Theft, vandalism and kidnapping", "Too much data", "Abundant personnel"], ans: 1, exp: "Security problems like theft and kidnapping are listed as challenges."},
+  {q: "Fluvial environments are characterized by sorting of sediments because?", opts: ["Ice transport", "Water flow sorts by size and density", "Wind action", "Gravity only"], ans: 1, exp: "River water sorts and rounds sediments through transport."},
+  {q: "Aeolian environments produce well-sorted sand because?", opts: ["Water sorting", "Wind selectively transports specific grain sizes", "Glacial action", "Volcanic ash"], ans: 1, exp: "Wind sorts grains by size, leaving well-sorted dune sands."},
+  {q: "Marine environments differ from fluvial in that they are dominated by?", opts: ["River flow", "Waves, tides and ocean currents", "Wind only", "Glaciers"], ans: 1, exp: "Marine processes include waves, tides and ocean currents."},
+  {q: "Lead toxicity in children is more severe than in adults because?", opts: ["Children eat more", "Developing nervous system is more vulnerable", "Children are smaller", "Adults are immune"], ans: 1, exp: "Lead causes irreversible neurological damage, especially in developing children."},
+  {q: "Mercury biomagnification in fish-eating communities led to Minamata disease showing?", opts: ["Safe levels", "Top predators accumulate highest concentrations", "Mercury decreases up chain", "No effect"], ans: 1, exp: "Biomagnification caused high mercury in humans eating contaminated fish."},
+  {q: "Cadmium exposure primarily targets which organ?", opts: ["Liver", "Kidneys", "Lungs", "Heart"], ans: 1, exp: "Cadmium is known to cause kidney damage."},
+  {q: "Arsenic contamination of groundwater is often natural due to?", opts: ["Fertilizers", "Weathering of arsenic-bearing minerals", "Plastics", "Oil spills"], ans: 1, exp: "Arsenic is released from natural minerals into groundwater."},
+  {q: "Bioremediation of metal-contaminated sites uses microbes to?", opts: ["Increase metals", "Transform or immobilize metals", "Add more metals", "Do nothing"], ans: 1, exp: "Bioremediation uses biological agents to treat contamination."},
+  {q: "William Smith's geological map was revolutionary because it showed?", opts: ["Only rivers", "Spatial distribution of rock strata across a country", "Weather", "Population"], ans: 1, exp: "He created the first nationwide geological map showing rock distribution."},
+  {q: "EGMT is essential for environmental management because it allows?", opts: ["Mining", "Non-invasive assessment of subsurface hazards and resources", "Deforestation", "Urbanization"], ans: 1, exp: "EGMT characterizes subsurface for hazards, groundwater, contamination without invasive methods."},
+  {q: "GPR resolution decreases with depth due to?", opts: ["Signal attenuation", "Increase in frequency", "Decrease in antenna size", "More satellites"], ans: 0, exp: "EM waves attenuate with depth, reducing GPR resolution."},
+  {q: "ERT is preferred for landfill leachate mapping because leachate is?", opts: ["Resistive", "Conductive", "Magnetic", "Radioactive"], ans: 1, exp: "Leachate has high conductivity which ERT can detect as low resistivity zones."},
+  {q: "EM scanners are used for rapid soil moisture mapping because conductivity correlates with?", opts: ["Temperature", "Water content", "pH", "Organic matter only"], ans: 1, exp: "Soil moisture increases electrical conductivity measured by EM."},
+  {q: "Magnetometers detect pipelines because steel pipes are?", opts: ["Non-magnetic", "Ferromagnetic and distort Earth's magnetic field", "Conductive", "Radioactive"], ans: 1, exp: "Ferrous infrastructure causes magnetic anomalies detectable by magnetometers."},
+  {q: "Brunton compass is essential in structural geology to measure?", opts: ["Rock age", "Orientation of planes and lines", "Mineral hardness", "Fossil type"], ans: 1, exp: "Brunton measures strike, dip and bearings for structural data."},
+  {q: "LiDAR bare-earth DEMs are critical for landslide hazard assessment because they reveal?", opts: ["Vegetation type", "Surface topography and scarps beneath canopy", "Soil chemistry", "Groundwater"], ans: 1, exp: "LiDAR penetrates canopy to show ground surface features."},
+  {q: "GIS allows geological map overlay with population data to?", opts: ["Increase color", "Assess risk to human settlements", "Reduce accuracy", "Measure temperature"], ans: 1, exp: "GIS integrates layers to analyze risk and spatial relationships."},
+  {q: "O horizon thickness increases in boreal forests due to?", opts: ["High decomposition", "Low temperature slowing decomposition", "High erosion", "Fire"], ans: 1, exp: "Cold temperatures slow decomposition, allowing organic matter accumulation."},
+  {q: "E horizon development is most pronounced in?", opts: ["Tropical soils", "Podzols under coniferous forests", "Desert soils", "Vertisols"], ans: 1, exp: "Podzolization creates prominent E horizons through leaching."},
+  {q: "B horizon accumulation of clay is called?", opts: ["Eluviation", "Illuviation", "Weathering", "Erosion"], ans: 1, exp: "Illuviation is accumulation of materials leached from above."},
+  {q: "C horizon is important in soil classification because it represents?", opts: ["Organic matter", "Parent material", "Bedrock", "Topsoil"], ans: 1, exp: "C horizon is partially weathered parent material."},
+  {q: "Geological map legends use colors and patterns to represent?", opts: ["Population", "Rock type and age", "Rainfall", "Roads"], ans: 1, exp: "Colors/patterns show rock type and age on geological maps."},
+  {q: "Faults are shown as black lines on maps because they represent?", opts: ["Rivers", "Breaks in crust", "Roads", "Boundaries"], ans: 1, exp: "Black lines represent faults and breaks in Earth's crust."},
+  {q: "Preparation stage in geological mapping includes?", opts: ["Drilling", "Literature review and planning fieldwork", "Lab analysis", "Map printing"], ans: 1, exp: "Preparation involves gathering existing data and planning."},
+  {q: "Field observation in mapping requires ground-truthing to?", opts: ["Avoid fieldwork", "Verify remote sensing interpretations", "Increase cost", "Reduce data"], ans: 1, exp: "Ground-truthing validates remote and geophysical data."},
+  {q: "Geological maps help mitigate landslide risk by?", opts: ["Building on slopes", "Identifying unstable formations to avoid development", "Ignoring geology", "Planting trees only"], ans: 1, exp: "Maps identify hazard zones for land-use planning."},
+  {q: "Urban planning uses geological maps to avoid construction on?", opts: ["Stable bedrock", "Floodplains and landslide zones", "Deserts", "Mountains only"], ans: 1, exp: "Maps identify areas at risk of flooding or landslides."},
+  {q: "Environmental conservation uses geological maps to protect?", opts: ["Industrial zones", "Groundwater recharge areas", "Parking lots", "Airports"], ans: 1, exp: "Maps show groundwater and soil features for habitat management."},
+  {q: "DOI in geophysics is not fixed because it depends on?", opts: ["Time of day", "Array configuration and subsurface resistivity", "Color", "Weather"], ans: 1, exp: "DOI depends on method, instrumentation and site properties."},
+  {q: "High cost of mineral exploration is due to?", opts: ["Low technology", "Multiple stages and expensive drilling", "Abundant data", "Short timeline"], ans: 1, exp: "Exploration involves years of work and expensive drilling with no guarantee."},
+  {q: "Lack of skilled personnel in developing countries affects exploration by?", opts: ["Reducing cost", "Limiting interpretation and project execution", "Increasing ore grade", "Speeding up process"], ans: 1, exp: "Shortage of skilled personnel is a listed challenge."},
+  {q: "Environmental constraints delay exploration due to?", opts: ["No regulations", "EIA requirements in protected areas", "Low cost", "Fast approval"], ans: 1, exp: "Environmental regulations and EIA requirements cause delays."},
+  {q: "Essential metals become toxic when?", opts: ["Always", "Concentration exceeds biological requirement", "Never", "Only in water"], ans: 1, exp: "Essential metals are toxic at high concentrations - dose dependent."},
+  {q: "Bioaccumulation in one organism vs biomagnification across food chain means?", opts: ["Same process", "Accumulation within individual vs increase at each trophic level", "Decrease in both", "No difference"], ans: 1, exp: "Bioaccumulation is within organism, biomagnification is up food chain."},
+  {q: "Waste management as control measure addresses metal pollution by?", opts: ["Increasing waste", "Proper treatment and disposal", "Ignoring it", "Dumping in ocean"], ans: 1, exp: "Proper waste management prevents metal release."},
+  {q: "Public awareness reduces metal pollution by?", opts: ["Increasing use", "Educating on dangers and safe practices", "No effect", "Promoting dumping"], ans: 1, exp: "Public awareness and education is a control measure."},
+  {q: "Glacial moraines indicate past ice extent because they are?", opts: ["River deposits", "Material deposited by glaciers", "Wind deposits", "Volcanic"], ans: 1, exp: "Moraines are direct evidence of glacial deposition."},
+  {q: "Coastal spits form due to?", opts: ["River deposition", "Longshore drift and wave action", "Glacial plucking", "Wind erosion"], ans: 1, exp: "Spits form from sediment transport by waves in coastal zone."},
+  {q: "The soil-vegetation-atmosphere continuum is important in biogeography for?", ops: ["Mineral exploration", "Understanding ecosystem energy and nutrient flow", "Weather forecasting", "Rock dating"], ans: 1, exp: "This continuum determines biological functioning of ecosystems."},
+  {q: "Human expansion of agro-ecosystems affects biogeography by?", opts: ["Increasing biodiversity", "Altering natural vegetation and nutrient cycles", "No effect", "Reducing CO2"], ans: 1, exp: "Agriculture expansion alters ecosystems and biogeochemical cycles."},
+  {q: "Air pollution impact on biogeography includes?", opts: ["Increased soil fertility", "Acid deposition affecting ecosystems", "More rainfall", "Less wind"], ans: 1, exp: "Air pollution and acid deposition impact ecosystems."},
+  {q: "Why is phylogeography important for conservation?", opts: ["It studies rocks", "It reveals genetic diversity across geography", "It measures weather", "It maps soil"], ans: 1, exp: "Phylogeography studies genetic relationships across geographic regions."},
+  {q: "Regional biogeography of Africa would focus on?", opts: ["Global climate", "Species distribution patterns within Africa", "Ocean currents", "Minerals"], ans: 1, exp: "Regional biogeography examines distribution in specific regions."},
+  {q: "Island biogeography theory helps design nature reserves by predicting?", opts: ["Soil type", "Species-area relationship", "Rainfall", "Temperature"], ans: 1, exp: "Island theory relates area to species number for reserve design."},
+  {q: "Historical biogeography explains Gondwana distribution using?", opts: ["Bird migration", "Continental drift", "Human transport", "Wind"], ans: 1, exp: "Continental drift explains Gondwanan biota distribution."},
+  {q: "The inability of Mesosaurus to cross oceans makes it better evidence than marine fossils because?", opts: ["Marine fossils can disperse", "Freshwater organisms cannot cross saltwater", "It is younger", "It is bigger"], ans: 1, exp: "Freshwater restriction means ocean was a barrier."},
+  {q: "Glossopteris seed weight is critical evidence because?", opts: ["Light seeds disperse far", "Heavy seeds require land connection", "Seeds don't matter", "It grew in water"], ans: 1, exp: "Heavy seeds could not cross oceans, requiring continuous land."},
+  {q: "Permian coal in Antarctica implies past?", opts: ["Glaciation", "Tropical climate", "Desert", "Volcanism"], ans: 1, exp: "Coal forms in warm tropical swamp environments."},
+  {q: "Why are geophysical methods called non-invasive?", opts: ["They drill", "They don't disturb subsurface", "They are cheap", "They are fast"], ans: 1, exp: "Geophysics characterizes subsurface without drilling."},
+  {q: "GPR frequency choice involves trade-off between?", opts: ["Cost and time", "Resolution and depth of penetration", "Color and size", "Weather and climate"], ans: 1, exp: "Higher frequency = better resolution but less depth."},
+  {q: "ERT array spacing affects?", opts: ["Color", "Depth of investigation", "Temperature", "pH"], ans: 1, exp: "Larger electrode spacing increases DOI in ERT."},
+  {q: "EM conductivity mapping is rapid because?", opts: ["It requires drilling", "It can be done airborne or ground without contact", "It is manual", "It is slow"], ans: 1, exp: "EM can be ground or airborne for rapid coverage."},
+  {q: "Magnetometer surveys are used in archaeology to find?", opts: ["Pottery", "Buried ferrous objects and fired structures", "Bones", "Wood"], ans: 1, exp: "Magnetometers detect buried pipes, tanks, artifacts."},
+  {q: "Hand lens magnification of 10x-20x is optimal for?", opts: ["Mapping", "Field mineral identification", "Drilling", "Satellite work"], ans: 1, exp: "Hand lens allows detailed examination of grains and texture."},
+  {q: "GNSS RTK provides cm-level accuracy needed for?", opts: ["Weather", "Precise mapping of sample locations", "Soil color", "Rock age"], ans: 1, exp: "Survey-grade GPS pinpoints exact coordinates of sites."},
+  {q: "GIS is essential for modern geological mapping because it?", opts: ["Replaces geologists", "Integrates and analyzes spatial data layers", "Drills", "Measures gravity"], ans: 1, exp: "GIS stores, analyzes and visualizes spatial geological data."},
+  {q: "Soil profile development reflects time through?", opts: ["Color only", "Degree of horizon differentiation", "Depth only", "pH only"], ans: 1, exp: "Older soils show more distinct horizons."},
+  {q: "Why are floodplains mapped as hazard zones?", opts: ["High fertility", "Risk of inundation", "Low population", "No soil"], ans: 1, exp: "Floodplains are prone to flooding."},
+  {q: "Mineral exploration must consider land ownership to?", opts: ["Increase cost", "Avoid community conflict", "Reduce ore grade", "Speed up drilling"], ans: 1, exp: "Land ownership issues can cause protests and delays."},
+  {q: "The 5 factors of soil formation interact such that climate modifies?", opts: ["Parent material weathering rate", "Rock color", "Human population", "Wind direction"], ans: 0, exp: "Climate controls rate of weathering of parent material."},
+  {q: "Erosion and deposition shape topography which in turn affects?", opts: ["Soil depth and drainage", "Rock type", "Minerals", "Climate"], ans: 0, exp: "Topography controls erosion, deposition and drainage."},
+  {q: "Organisms affect soil by?", opts: ["Only destruction", "Adding organic matter and mixing", "Reducing time", "Changing climate"], ans: 1, exp: "Organisms add organic matter and bioturbate soil."},
+  {q: "Why is mineral exploration time-consuming?", opts: ["It is simple", "Sequential stages from reconnaissance to feasibility", "It is cheap", "No data needed"], ans: 0, exp: "Multiple stages over years are required."},
+  {q: "Geological mapping is fundamental to EGMT because it provides?", opts: ["Weather data", "Surface geological context", "Population data", "Economic data"], ans: 1, exp: "Mapping provides surface geology for interpretation."},
+  {q: "The importance of geological maps for infrastructure includes?", ops: ["Designing roads on stable ground", "Locating restaurants", "Planning flights", "Mapping internet"], ans: 0, exp: "Maps assess land stability for construction."},
+  {q: "Biogeography's study of human impact is critical now due to?", opts: ["Decreasing population", "Global climate change and land use change", "Less pollution", "No change"], ans: 1, exp: "Human impacts like climate change are major focus."},
+  {q: "Analytical biogeography asks 'where and how' while historical asks?", opts: ["Why now", "Why and when in past", "Who", "What color"], ans: 1, exp: "Historical considers how distribution came to be over time."},
+  {q: "The integration of biology and geography in biogeography is necessary because organism distribution is controlled by?", opts: ["Only genetics", "Both biological processes and geographical environmental factors", "Only climate", "Only human activity"], ans: 1, exp: "Biogeography studies spatial distribution and biological processes, making it both biological and geographical."},
+  {q: "Phytogeography and zoogeography are distinguished primarily by?", opts: ["Climate", "Taxonomic group studied: plants vs animals", "Soil type", "Time period"], ans: 1, exp: "Phytogeography = plant distribution. Zoogeography = animal distribution."},
+  {q: "A geographer studying biogeography would be more concerned with analyzing why a species range shifted over 100 years due to deforestation, while a biologist would focus on?", opts: ["Continental drift", "Physiological stress responses of individuals to habitat loss", "Rock type", "Mineral content"], ans: 1, exp: "Biologists focus on physiological, morphological, behavioral aspects of individual organisms."},
+  {q: "The biotic complex concept is important in biogeography because it emphasizes?", opts: ["Isolation of components", "Interdependence of soil, plants, animals and climate", "Human dominance", "Geological time only"], ans: 1, exp: "Biotic complex is the interacting complex of soil, plants, animals and interaction with climate."},
+  {q: "Biogeography's aim to study energy flow through soil-vegetation-atmosphere continuum directly relates to understanding?", opts: ["Mineral deposits", "Ecosystem productivity and stability", "Rock weathering", "Fossil formation"], ans: 1, exp: "This continuum determines biological functioning and diversity of terrestrial ecosystems."},
+  {q: "Human-driven increase in atmospheric CO2 is a biogeography concern because it alters?", opts: ["Rock types", "Global biogeochemical cycles and ecosystem functioning", "Soil color", "Mineral prices"], ans: 1, exp: "Biogeography examines human impacts via increases in CO2 and climate change on ecosystems."},
+  {q: "Analytical biogeography would use current species occurrence data and dispersal models to answer?", opts: ["How continents drifted", "How a species spread to its present location", "Fossil age", "Rock composition"], ans: 1, exp: "Analytical examines where organisms live today and how they spread."},
+  {q: "Historical biogeography uses fossil and geological data to test hypotheses about?", opts: ["Current rainfall", "Influence of continental drift on distribution", "Soil pH", "Population density"], ans: 1, exp: "Historical considers influence of continental drift and climate change on long-term evolution."},
+  {q: "Ecological biogeography explains the zonation of vegetation along an altitudinal gradient primarily by?", opts: ["Continental drift", "Changes in environmental complex with elevation", "Fossil record", "Human migration"], ans: 1, exp: "Ecological looks at relations between life and present environmental complex."},
+  {q: "Biogeographical region boundaries shift over time due to?", opts: ["Political decisions", "Climate change and tectonic movement altering migration barriers", "Language", "Economics"], ans: 1, exp: "Boundaries determined by changes in climate and movement of continents."},
+  {q: "Wegener's use of biological evidence for continental drift was revolutionary because it provided?", opts: ["Chemical data", "Independent biological proof supporting geological fit", "Weather data", "Economic data"], ans: 1, exp: "Biological similarities provided compelling argument for former existence of Pangaea."},
+  {q: "Mesosaurus fossils are found only in South America and Southern Africa and not in North America because?", opts: ["It preferred south", "The Atlantic Ocean opened after Pangaea split", "It couldn't swim", "Climate was different"], ans: 1, exp: "Distribution fits Pangaea reconstruction where SA and Africa were joined."},
+  {q: "Lystrosaurus being found in Antarctica, Africa and India supports Gondwana because?", opts: ["It migrated recently", "These areas were contiguous in Gondwana", "It flew", "Oceans were shallow"], ans: 1, exp: "Land reptile distribution requires contiguous landmass of Gondwana."},
+  {q: "The global distribution of Glossopteris flora is used to reconstruct?", opts: ["Ocean currents", "Pangaea", "Weather patterns", "Human migration"], ans: 1, exp: "Distribution fits perfectly when continents reassembled into Pangaea."},
+  {q: "Climatic evidence like glacial deposits in India contradicts present climate and supports drift by indicating?", opts: ["Climate error", "India was at South Pole in Permian", "No glaciation", "Volcanism"], ans: 1, exp: "Glacial deposits show continents moved across climate zones."},
+  {q: "Why can't evolution alone explain identical Glossopteris on 5 continents?", opts: ["Evolution is too slow", "Convergent evolution is unlikely for identical species across barriers", "Plants don't evolve", "Oceans help evolution"], ans: 1, exp: "Identical species cannot be explained by coincidence or evolution alone across ocean barriers."},
+  {q: "Fluvisols have stratified layers due to?", opts: ["Volcanism", "Periodic flooding and deposition of alluvium", "Wind", "Glaciation"], ans: 1, exp: "Fluvisols form from alluvial deposits in floodplains."},
+  {q: "Andosols have low bulk density and high water holding capacity because of?", opts: ["High sand", "Amorphous clay minerals from volcanic glass", "High salt", "Organic matter only"], ans: 1, exp: "Andosols from volcanic ash have unique physical properties."},
+  {q: "Chernozem fertility declines under cultivation without management due to?", opts: ["Leaching of organic matter", "Depletion of organic matter and nutrients", "Salinization", "Acidification"], ans: 1, exp: "High organic matter is key to Chernozem fertility."},
+  {q: "Calcisols pose problems for irrigation agriculture due to?", opts: ["Acidity", "Calcium carbonate layers impeding drainage", "Low organic matter", "High clay"], ans: 1, exp: "CaCO3 accumulation can form hardpans."},
+  {q: "Lixisols are prone to nutrient leaching because of?", opts: ["High base saturation", "Low base saturation and kaolinitic clay", "High organic matter", "Volcanic ash"], ans: 1, exp: "Lixisols have low base saturation in tropical environments."},
+  {q: "Luvisols are preferred for agriculture over Lixisols in tropics because?", opts: ["More sand", "Higher base saturation and nutrient availability", "Less clay", "More acid"], ans: 1, exp: "Luvisols have higher base saturation."},
+  {q: "Histosols are important carbon sinks because?", opts: ["High mineral content", "Accumulation of organic matter in anaerobic conditions", "Low pH", "High temperature"], ans: 1, exp: "Waterlogged conditions preserve organic matter."},
+  {q: "Anthrosols in urban areas show evidence of?", opts: ["Natural processes", "Human addition of artifacts and waste", "Volcanism", "Glaciation"], ans: 1, exp: "Anthrosols are significantly modified by human activity."},
+  {q: "Structural adaptation of desert plants with reduced leaves to spines reduces?", opts: ["Photosynthesis", "Transpiration and herbivory", "Growth", "Reproduction"], ans: 1, exp: "Spines reduce water loss and deter animals."},
+  {q: "Physiological adaptation in halophytes to saline soils involves?", opts: ["Migration", "Salt excretion and osmotic adjustment", "Hibernation", "Thick fur"], ans: 1, exp: "Physiological mechanisms to cope with salinity."},
+  {q: "Behavioral adaptation in nocturnal desert animals avoids?", opts: ["Predators", "Daytime heat and water loss", "Cold", "Wind"], ans: 1, exp: "Nocturnal behavior reduces heat stress."},
+  {q: "Physical weathering by salt crystallization is important in?", opts: ["Tropics", "Arid coastal and desert environments", "Glaciers", "Rainforests"], ans: 1, exp: "Salt weathering is a physical process in dry areas."},
+  {q: "Chemical weathering rate increases with temperature due to?", opts: ["Slower reactions", "Increased kinetic energy of molecules", "Less water", "More wind"], ans: 1, exp: "Heat accelerates chemical reactions."},
+  {q: "Biological weathering by lichens contributes acids that?", opts: ["Neutralize soil", "Chemically break down minerals", "Add salt", "Increase pH"], ans: 1, exp: "Lichens produce acids for chemical weathering."},
+  {q: "Parent material high in quartz will produce soils that are?", opts: ["Fertile", "Sandy and low in nutrients", "Clayey", "Organic"], ans: 1, exp: "Quartz is resistant and forms sandy soils."},
+  {q: "Climate influences soil through leaching intensity which is highest in?", opts: ["Deserts", "Humid tropics", "Polar regions", "Mountains"], ans: 1, exp: "High rainfall in tropics causes intense leaching."},
+  {q: "Steep topography leads to shallow soils due to?", opts: ["Deposition", "Increased erosion removing material", "Less weathering", "More organic matter"], ans: 1, exp: "Topography controls erosion and soil depth."},
+  {q: "Organisms affect soil formation by bioturbation which?", opts: ["Compacts soil", "Mixes horizons", "Leaches nutrients", "Reduces organic matter"], ans: 1, exp: "Organisms mix soil materials."},
+  {q: "Time allows soil to develop diagnostic horizons. Young soils like Cambisols have?", opts: ["Strong horizons", "Weak horizon development", "No horizons", "Thick O horizon"], ans: 1, exp: "Cambisols are young with weak development."},
+  {q: "Reconnaissance survey data sources include?", opts: ["Boreholes", "Satellite images and existing geological maps", "Lab analysis", "Drilling"], ans: 1, exp: "Reconnaissance uses maps and remote sensing."},
+  {q: "Geological survey maps surface outcrops to?", opts: ["Find groundwater", "Establish lithology and structure", "Measure gravity", "Count fossils"], ans: 1, exp: "Geological survey maps rocks and structures."},
+  {q: "Geophysical methods measure contrasts in?", opts: ["Color", "Physical properties like density and magnetism", "pH", "Organic matter"], ans: 1, exp: "Geophysics measures physical property contrasts."},
+  {q: "Geochemical anomalies indicate?", opts: ["No minerals", "Potential mineralization", "Water", "Faults only"], ans: 1, exp: "Geochemistry tests for mineral elements."},
+  {q: "Exploratory drilling provides core samples to determine?", opts: ["Weather", "Size, depth and quality of deposit", "Soil type", "Population"], ans: 1, exp: "Drilling confirms size, depth, quality."},
+  {q: "Land degradation from mining reduces?", opts: ["Air quality", "Land productivity and ecosystem services", "Noise", "Temperature"], ans: 1, exp: "Clearing vegetation causes land degradation."},
+  {q: "Water pollution from mining is critical because?", opts: ["It is visible", "Toxic metals affect downstream users", "It increases pH", "It is temporary"], ans: 1, exp: "Mercury, cyanide etc pollute water."},
+  {q: "Air pollution from mining includes particulate matter that?", opts: ["Improves air", "Causes respiratory problems", "Increases oxygen", "Reduces CO2"], ans: 1, exp: "Dust and emissions cause air pollution."},
+  {q: "Climate change contribution from mining fossil fuels is due to?", opts: ["Dust", "Greenhouse gas emissions", "Noise", "Water use"], ans: 1, exp: "CO2 and methane release."},
+  {q: "Noise pollution from mining can cause wildlife to?", opts: ["Increase", "Migrate away", "Reproduce more", "Stay"], ans: 1, exp: "Noise can disturb and cause migration."},
+  {q: "Displacement of communities is a social impact that leads to?", opts: ["More jobs", "Loss of livelihood and cultural disruption", "Better housing", "No effect"], ans: 1, exp: "Displacement causes social issues."},
+  {q: "High cost is a challenge because exploration has?", opts: ["Low risk", "High risk with uncertain return", "Guaranteed ore", "Short duration"], ans: 1, exp: "High-risk venture with no guarantee."},
+  {q: "Difficult terrain increases exploration cost due to?", opts: ["Better access", "Logistical challenges", "Less equipment", "More personnel"], ans: 1, exp: "Remote areas are hard to access."},
+  {q: "Inaccurate geological data leads to?", opts: ["Success", "Drilling dry holes", "Faster work", "Lower cost"], ans: 1, exp: "Poor data increases failure rate."},
+  {q: "Lack of technology limits exploration by?", opts: ["Reducing cost", "Inability to detect deep deposits", "Increasing personnel", "Speeding up"], ans: 1, exp: "Technology needed for detection."},
+  {q: "Environmental constraints require?", opts: ["No permits", "EIA and compliance", "Ignoring laws", "Faster drilling"], ans: 1, exp: "Environmental regulations must be followed."},
+  {q: "Political instability causes?", opts: ["Investment", "Project delays and cancellations", "More ore", "Better data"], ans: 1, exp: "Unstable policies create uncertainty."},
+  {q: "Security problems affect exploration by?", opts: ["Improving safety", "Risk to personnel and equipment", "Reducing cost", "Increasing data"], ans: 1, exp: "Theft and kidnapping are risks."},
+  {q: "Shortage of skilled personnel results in?", opts: ["Better interpretation", "Poor project execution", "More data", "Lower cost"], ans: 1, exp: "Need experts for interpretation."},
+  {q: "Time-consuming nature is due to?", opts: ["One stage", "Multiple sequential stages", "No planning", "Fast results"], ans: 1, exp: "Takes years from survey to production."},
+  {q: "Fluvial environments deposit sediments in?", opts: ["Dunes", "Point bars and floodplains", "Moraines", "Reefs"], ans: 1, exp: "Rivers deposit in floodplains."},
+  {q: "Aeolian environments are characterized by?", opts: ["Water", "Wind erosion and deposition", "Ice", "Waves"], ans: 1, exp: "Wind shapes deserts."},
+  {q: "Marine environments have?", opts: ["Rivers", "Waves, tides and currents", "Wind only", "Glaciers"], ans: 1, exp: "Ocean processes dominate."},
+  {q: "Transitional environments like estuaries have?", opts: ["Only freshwater", "Mix of fresh and salt water", "Only salt", "No life"], ans: 1, exp: "Estuaries mix river and sea."},
+  {q: "Glacial environments produce?", opts: ["Sorted sand", "Unsorted till", "Clay", "Limestone"], ans: 1, exp: "Glaciers deposit unsorted till."},
+  {q: "Continental environments include?", opts: ["Oceans", "Lakes, deserts and mountains", "Coasts", "Reefs"], ans: 1, exp: "Continental includes land environments."},
+  {q: "Lead exposure route through ingestion is common via?", opts: ["Air", "Contaminated water and food", "Skin", "Wounds"], ans: 1, exp: "Ingestion is a major pathway."},
+  {q: "Mercury in fish is a problem due to?", ops: ["Bioaccumulation", "Biomagnification in food chain", "Volatilization", "Precipitation"], ans: 1, exp: "Mercury biomagnifies in aquatic food chains."},
+  {q: "Cadmium is associated with?", opts: ["Bone health", "Kidney damage", "Eye problems", "Hair growth"], ans: 1, exp: "Cadmium causes kidney damage."},
+  {q: "Arsenic is called king of poisons due to?", opts: ["Low toxicity", "High toxicity and carcinogenicity", "Beneficial effects", "Odor"], ans: 1, exp: "Arsenic is highly toxic."},
+  {q: "Zinc excess causes?", opts: ["Strong bones", "Gastrointestinal distress", "Better vision", "More energy"], ans: 1, exp: "Excess Zn causes vomiting and diarrhoea."},
+  {q: "Copper is essential but toxic at high levels causing?", opts: ["Liver damage", "Stronger muscles", "Better memory", "No effect"], ans: 0, exp: "Copper excess can damage liver."},
+  {q: "Bioaccumulation refers to?", opts: ["Increase up food chain", "Buildup in one organism over time", "Decrease", "No change"], ans: 1, exp: "Accumulation within individual."},
+  {q: "Biomagnification means?", opts: ["Decrease at higher levels", "Increase in concentration at higher trophic levels", "No change", "Equal distribution"], ans: 1, exp: "Concentration increases up food chain."},
+  {q: "Waste management reduces metal pollution by?", opts: ["Dumping", "Proper treatment", "Burning", "Ignoring"], ans: 1, exp: "Proper disposal prevents release."},
+  {q: "Legislation controls metals by?", opts: ["Promoting use", "Setting standards and penalties", "Ignoring", "Subsidizing"], ans: 1, exp: "Laws enforce standards."},
+  {q: "Public awareness helps by?", opts: ["Increasing pollution", "Educating on risks", "No effect", "Promoting dumping"], ans: 1, exp: "Education reduces exposure."},
+  {q: "Phytoremediation uses plants to?", opts: ["Add metals", "Extract or stabilize metals", "Increase pH", "Add salt"], ans: 1, exp: "Plants uptake contaminants."},
+  {q: "Bioremediation uses?", opts: ["Chemicals", "Microbes", "Fire", "Machines"], ans: 1, exp: "Microbes degrade or transform contaminants."},
+  {q: "William Smith mapped strata using?", opts: ["Fossils", "Rock types", "Color", "Weather"], ans: 0, exp: "Fossils used for correlation."},
+  {q: "EGMT characterizes?", opts: ["Surface only", "Surface and shallow subsurface", "Deep mantle", "Atmosphere"], ans: 1, exp: "EGMT for shallow subsurface."},
+  {q: "GPR uses?", opts: ["Sound", "High frequency EM waves", "Magnetism", "Gravity"], ans: 1, exp: "GPR emits EM waves."},
+  {q: "ERT measures?", opts: ["Magnetism", "Electrical resistivity", "Gravity", "Radioactivity"], ans: 1, exp: "ERT measures resistance."},
+  {q: "EM measures?", opts: ["Conductivity", "Temperature", "pH", "Color"], ans: 0, exp: "EM measures ground conductivity."},
+  {q: "Magnetometer detects?", opts: ["Water", "Magnetic anomalies", "Radiation", "Light"], ans: 1, exp: "Detects magnetic field variations."},
+  {q: "Brunton measures?", opts: ["Age", "Strike and dip", "Hardness", "Weight"], ans: 1, exp: "Measures orientation."},
+  {q: "LiDAR uses?", opts: ["Sound", "Laser pulses", "Radar", "Magnetism"], ans: 1, exp: "LiDAR uses lasers."},
+  {q: "GIS integrates?", opts: ["Data layers", "People", "Weather", "Minerals"], ans: 0, exp: "GIS integrates spatial data."},
+  {q: "O horizon is?", opts: ["Mineral", "Organic", "Clay", "Sand"], ans: 1, exp: "Organic layer."},
+  {q: "A horizon is?", opts: ["Subsoil", "Topsoil", "Bedrock", "Parent"], ans: 1, exp: "Topsoil with organics."},
+  {q: "E horizon is?", opts: ["Accumulation", "Leached", "Bedrock", "Organic"], ans: 1, exp: "Eluviated horizon."},
+  {q: "B horizon is?", opts: ["Leached", "Accumulation", "Organic", "Bedrock"], ans: 1, exp: "Illuvial horizon."},
+  {q: "C horizon is?", opts: ["Bedrock", "Parent material", "Topsoil", "Organic"], ans: 1, exp: "Partially weathered rock."},
+  {q: "R horizon is?", opts: ["Soil", "Bedrock", "Clay", "Sand"], ans: 1, exp: "Solid bedrock."},
+  {q: "Geological map shows?", opts: ["Weather", "Rock distribution", "Population", "Roads"], ans: 1, exp: "Shows rock types."},
+  {q: "Faults on map are?", opts: ["Blue", "Black lines", "Red", "Green"], ans: 1, exp: "Black lines."},
+  {q: "Preparation step involves?", opts: ["Drilling", "Data gathering", "Analysis", "Printing"], ans: 1, exp: "Gather data first."},
+  {q: "Field observation requires?", opts: ["Lab only", "Ground-truthing", "Satellite only", "No work"], ans: 1, exp: "Verify with fieldwork."},
+  {q: "Data analysis interprets?", opts: ["Weather", "Geological history", "Population", "Economics"], ans: 1, exp: "Interpret geological data."},
+  {q: "Map construction produces?", opts: ["Drill hole", "Geological map", "Mine", "Road"], ans: 1, exp: "Final map product."},
+  {q: "Geological mapping helps assess?", opts: ["Stocks", "Natural hazards", "Music", "Fashion"], ans: 1, exp: "Assess hazards like landslides."},
+  {q: "Urban planning uses maps for?", opts: ["Restaurants", "Land stability", "Traffic", "Sports"], ans: 1, exp: "Assess construction suitability."},
+  {q: "Infrastructure protection uses maps to?", opts: ["Increase risk", "Avoid hazard zones", "Ignore geology", "Build anywhere"], ans: 1, exp: "Prevent damage."},
+  {q: "Environmental conservation uses maps for?", opts: ["Mining", "Habitat management", "Roads", "Buildings"], ans: 1, exp: "Manage natural habitats."},
+  {q: "Agriculture uses maps for?", opts: ["Soil suitability", "Weather", "Population", "Minerals"], ans: 0, exp: "Determine suitable areas."},
+  {q: "DOI depends on?", opts: ["Color", "Method and site", "Time", "People"], ans: 1, exp: "Method and properties."},
+  {q: "Hand lens is used for?", opts: ["Navigation", "Mineral ID", "Drilling", "Mapping"], ans: 1, exp: "Examine textures."},
+  {q: "GNSS provides?", opts: ["Weather", "Coordinates", "Age", "pH"], ans: 1, exp: "Precise coordinates."},
+  {q: "High cost challenge is due to?", opts: ["Low risk", "High risk", "Short time", "No data"], ans: 1, exp: "Expensive and uncertain."},
+  {q: "Difficult terrain challenge means?", opts: ["Easy access", "Logistical problems", "More data", "Less cost"], ans: 1, exp: "Hard to access."},
+  {q: "Inaccurate data causes?", opts: ["Success", "Failure", "Speed", "Savings"], ans: 1, exp: "Leads to dry holes."},
+  {q: "Lack of technology means?", opts: ["Better detection", "Poor detection", "More staff", "Less cost"], ans: 1, exp: "Can't detect deposits."},
+  {q: "Environmental constraints cause?", opts: ["Speed", "Delays", "Savings", "More ore"], ans: 1, exp: "Regulatory delays."},
+  {q: "Political issues cause?", opts: ["Stability", "Uncertainty", "More data", "Less risk"], ans: 1, exp: "Policy uncertainty."},
+  {q: "Security issues cause?", opts: ["Safety", "Risk", "Savings", "Speed"], ans: 1, exp: "Risk to staff."},
+  {q: "Personnel shortage causes?", opts: ["Better work", "Poor execution", "More data", "Less cost"], ans: 1, exp: "Need experts."},
+  {q: "Time consuming due to?", opts: ["One step", "Many stages", "No planning", "Fast"], ans: 1, exp: "Takes years."},
+  {q: "The inclusion of microorganisms in the definition of biogeography expands its scope to include?", opts: ["Only macrofauna", "Decomposers and nutrient cycling", "Rocks only", "Climate only"], ans: 1, exp: "Biogeography includes microorganisms together with geographical relationship with their environment."},
+  {q: "Biogeography as an interface discipline draws from pedology to understand how?", opts: ["Rock age", "Soil properties control plant distribution", "Mineral prices", "Weather forecasting"], ans: 1, exp: "Biogeography interfaces with pedology to study soil effects on distribution."},
+  {q: "Geomorphology contributes to biogeography by explaining how?", opts: ["Landforms create barriers and habitats", "Minerals form", "Weather changes", "Population grows"], ans: 0, exp: "Landforms affect migration barriers and habitat distribution."},
+  {q: "The reciprocal relationship between man and biosphere studied by geographers includes?", opts: ["Only human benefits", "Human impacts on biosphere and biosphere impacts on humans", "Animal behavior only", "Soil chemistry only"], ans: 1, exp: "Geographers emphasize reciprocal relationship between man and biosphere."},
+  {q: "Biogeography predicts species distribution using abiotic processes such as?", opts: ["Music", "Energy, water and nutrient flow", "Population", "Economics"], ans: 1, exp: "Examines patterns of energy, water and nutrients through continuum."},
+  {q: "Impact of agro-ecosystem expansion on biogeography is studied due to?", opts: ["Decreasing food demand", "Increasing world population", "Less land", "More forests"], ans: 1, exp: "Aims to determine impact as world population increases."},
+  {q: "Air pollution and acid deposition affect biogeography by altering?", opts: ["Rock type", "Soil chemistry and plant health", "Ocean depth", "Mineral prices"], ans: 1, exp: "Human changes affect biogeochemical cycles via air pollution."},
+  {q: "Analytical biogeography maps current species ranges to infer?", opts: ["Fossil age", "Dispersal routes and barriers", "Rock composition", "Climate history"], ans: 1, exp: "Examines where organisms live today and how they spread."},
+  {q: "Ecological biogeography would explain desert cactus distribution by?", opts: ["Continental drift", "Adaptation to arid environmental complex", "Fossil record", "Human planting"], ans: 1, exp: "Looks at relations between life and environmental complex."},
+  {q: "Historical biogeography uses vicariance to explain distributions resulting from?", opts: ["Migration", "Splitting of ancestral range by geological events", "Wind", "Birds"], ans: 1, exp: "Continental drift and climate change split ranges."},
+  {q: "Biogeographical regions have shared evolutionary history evidenced by?", opts: ["Similar politics", "Similar systematics of biota", "Similar GDP", "Similar language"], ans: 1, exp: "Based on similarity of composition in terms of systematics."},
+  {q: "Physical barriers to migration that define biogeographical regions include?", opts: ["Roads", "Mountains and oceans", "Cities", "Farms"], ans: 1, exp: "Boundaries determined by physical and climatic barriers."},
+  {q: "Wegener's Pangaea reconstruction was supported by fitting?", opts: ["Population data", "Continents like a puzzle", "Climate data", "Economic data"], ans: 1, exp: "Pattern fits when continents fitted together."},
+  {q: "Mesosaurus being freshwater means its trans-oceanic distribution requires?", opts: ["Ocean currents", "Land bridge", "Bird transport", "Human introduction"], ans: 1, exp: "Could not survive in saltwater, so land connection needed."},
+  {q: "Lystrosaurus distribution across 3 Gondwana continents rules out?", opts: ["Drift", "Long-distance ocean dispersal", "Climate change", "Evolution"], ans: 1, exp: "Land reptile could not cross oceans."},
+  {q: "Glossopteris distribution is unique evidence because seeds were?", opts: ["Light", "Heavy and not wind/water dispersed far", "Marine", "Animal dispersed"], ans: 1, exp: "Heavy seeds could not disperse across oceans."},
+  {q: "Permian coal in Antarctica indicates past position in?", opts: ["Polar", "Tropical humid zone", "Desert", "Temperate"], ans: 1, exp: "Coal forms in warm tropical environments."},
+  {q: "Glacial deposits in India indicate past latitude near?", opts: ["Equator", "South Pole", "Tropics", "Mid-latitude"], ans: 1, exp: "Glacial deposits show past polar position."},
+  {q: "Biological evidence for drift is stronger than geological fit alone because it shows?", opts: ["Rocks moved", "Life moved with continents", "Climate changed", "Oceans formed"], ans: 1, exp: "Organisms spread freely before landmasses drifted apart."},
+  {q: "Fluvisols are young soils because?", opts: ["Old", "Continuous deposition prevents horizon development", "High leaching", "Volcanism"], ans: 1, exp: "Alluvial deposition resets soil development."},
+  {q: "Andosols have high anion exchange capacity due to?", opts: ["Kaolinite", "Allophane and imogolite", "Quartz", "Calcite"], ans: 1, exp: "Volcanic ash soils have unique minerals."},
+  {q: "Chernozems under native grassland are threatened by?", opts: ["Flooding", "Plowing and organic matter loss", "Salinity", "Acidity"], ans: 1, exp: "Cultivation depletes organic matter."},
+  {q: "Calcisols in irrigation areas may develop?", opts: ["Podzols", "Salinity and sodicity", "Peat", "Laterite"], ans: 1, exp: "Arid soils prone to salinization."},
+  {q: "Lixisols have argillic horizon but low fertility due to?", opts: ["High pH", "Low base saturation", "High organic matter", "Sand"], ans: 1, exp: "Low base saturation limits nutrients."},
+  {q: "Luvisols are leached but fertile because?", opts: ["No leaching", "High base saturation despite clay movement", "No clay", "Volcanic"], ans: 1, exp: "Have clay illuviation but retain bases."},
+  {q: "Histosols emit greenhouse gases when?", opts: ["Wet", "Drained and oxidized", "Frozen", "Saline"], ans: 1, exp: "Drainage oxidizes organic carbon."},
+  {q: "Anthrosols in terraced fields show?", opts: ["Natural soil", "Human modification of topography and soil", "Volcanism", "Glaciation"], ans: 1, exp: "Human activity modifies soils."},
+  {q: "Structural adaptation in xerophytes with sunken stomata reduces?", opts: ["Growth", "Transpiration", "Photosynthesis", "Reproduction"], ans: 1, exp: "Reduces water loss."},
+  {q: "Physiological adaptation in CAM plants allows?", opts: ["Night CO2 uptake", "Day CO2 uptake", "No photosynthesis", "Water storage only"], ans: 0, exp: "CAM is physiological adaptation to aridity."},
+  {q: "Behavioral adaptation in estivation helps animals survive?", opts: ["Cold", "Drought", "Flood", "Wind"], ans: 1, exp: "Dormancy during dry period."},
+  {q: "Physical weathering by insolation is important where?", opts: ["Tropics", "Deserts with large temperature range", "Glaciers", "Rainforest"], ans: 1, exp: "Thermal stress in deserts."},
+  {q: "Chemical weathering by carbonation dissolves?", opts: ["Quartz", "Limestone", "Granite", "Sandstone"], ans: 1, exp: "CO2 + water dissolves carbonates."},
+  {q: "Biological weathering by burrowing animals?", opts: ["Compacts", "Aerates and mixes soil", "Leaches", "Salinizes"], ans: 1, exp: "Animals mix and aerate soil."},
+  {q: "Parent material with high iron produces soils that are?", opts: ["White", "Red due to iron oxides", "Black", "Green"], ans: 1, exp: "Iron oxides color soils."},
+  {q: "Climate with high rainfall causes?", opts: ["Accumulation", "Leaching of bases", "Salt buildup", "No weathering"], ans: 1, exp: "Leaching removes nutrients."},
+  {q: "Topography on north vs south slopes affects soil by?", opts: ["Same", "Microclimate differences", "No effect", "Wind only"], ans: 1, exp: "Aspect affects temperature and moisture."},
+  {q: "Organisms as soil formers include?", opts: ["Only plants", "Plants, animals and microbes", "Rocks", "Water"], ans: 1, exp: "Biota contribute organic matter."},
+  {q: "Time in soil formation is evident in?", opts: ["Color only", "Profile development", "pH only", "Texture only"], ans: 1, exp: "Older soils have more developed profiles."},
+  {q: "Reconnaissance is broad scale while detailed mapping is?", opts: ["Same", "Site specific", "No difference", "Cheaper"], ans: 1, exp: "Detailed follows reconnaissance."},
+  {q: "Geological survey identifies structures important for?", opts: ["Weather", "Mineral traps", "Population", "Traffic"], ans: 1, exp: "Structures control mineralization."},
+  {q: "Geophysical anomaly without surface expression suggests?", opts: ["No ore", "Buried deposit", "Water", "Fault"], ans: 1, exp: "Subsurface target."},
+  {q: "Geochemical sampling media include?", opts: ["Only rocks", "Soil, water and vegetation", "Air only", "People"], ans: 1, exp: "Test soil, water, rock samples."},
+  {q: "Exploratory drilling spacing depends on?", opts: ["Weather", "Deposit geometry", "Population", "Roads"], ans: 1, exp: "To define size and continuity."},
+  {q: "Land degradation reduces?", opts: ["Biodiversity", "Ecosystem services", "Noise", "Temperature"], ans: 1, exp: "Loss of productivity."},
+  {q: "Water pollution from acid mine drainage has low?", opts: ["pH", "Metals", "Turbidity", "Oxygen"], ans: 0, exp: "Acidic water."},
+  {q: "Airborne dust from mining contains?", opts: ["Oxygen", "Particulates and metals", "Water", "Nitrogen"], ans: 1, exp: "Dust and emissions."},
+  {q: "Climate impact from mining coal is?", opts: ["Cooling", "Greenhouse gas release", "No effect", "Ozone"], ans: 1, exp: "CO2 and methane."},
+  {q: "Noise impacts fauna by?", opts: ["Attracting", "Disrupting communication and behavior", "Feeding", "Breeding"], ans: 1, exp: "Disturbance."},
+  {q: "Community displacement leads to?", opts: ["Wealth", "Loss of land and culture", "More jobs", "No impact"], ans: 1, exp: "Social impact."},
+  {q: "Exploration cost is high due to?", opts: ["Cheap drilling", "Expensive equipment and labor", "No risk", "Fast results"], ans: 1, exp: "High cost venture."},
+  {q: "Terrain difficulty increases?", opts: ["Speed", "Cost and time", "Data quality", "Ore grade"], ans: 1, exp: "Logistics challenges."},
+  {q: "Inaccurate data increases?", opts: ["Success rate", "Risk of failure", "Speed", "Profit"], ans: 1, exp: "Leads to dry holes."},
+  {q: "Technology gap causes?", opts: ["Better results", "Missed targets", "More staff", "Lower cost"], ans: 1, exp: "Can't detect deep ore."},
+  {q: "Environmental laws require?", opts: ["No assessment", "EIA", "Ignoring", "Fast track"], ans: 1, exp: "EIA required."},
+  {q: "Political risk affects?", opts: ["Geology", "Investment decisions", "Ore grade", "Weather"], ans: 1, exp: "Investor confidence."},
+  {q: "Security risk includes?", opts: ["Safety", "Theft", "Data", "Weather"], ans: 1, exp: "Theft and vandalism."},
+  {q: "Skill shortage means?", opts: ["More experts", "Reliance on expatriates", "Less cost", "Faster"], ans: 1, exp: "Need skilled staff."},
+  {q: "Exploration timeline is long due to?", opts: ["One phase", "Sequential phases", "No planning", "Instant results"], ans: 1, exp: "Multiple stages."},
+  {q: "Fluvial point bars form on?", opts: ["Outer bend", "Inner bend", "Straight", "Mouth"], ans: 1, exp: "Deposition on inner bend."},
+  {q: "Aeolian dunes migrate due to?", opts: ["Water", "Wind", "Ice", "Gravity"], ans: 1, exp: "Wind transport."},
+  {q: "Marine beaches have?", opts: ["Till", "Sorted sand", "Clay", "Mud only"], ans: 1, exp: "Wave sorting."},
+  {q: "Estuaries are mixing zones for?", opts: ["Air", "Fresh and salt water", "Soil", "Rocks"], ans: 1, exp: "Transitional environment."},
+  {q: "Glacial U-valleys indicate?", opts: ["River", "Ice erosion", "Wind", "Sea"], ans: 1, exp: "Glacial erosion."},
+  {q: "Continental lakes form in?", opts: ["Ocean", "Depressions on land", "Coast", "Desert"], ans: 1, exp: "Land environment."},
+  {q: "Lead ingestion in children from?", opts: ["Air", "Paint and dust", "Water only", "Soil only"], ans: 1, exp: "Common exposure route."},
+  {q: "Mercury methylation increases?", opts: ["Toxicity", "Bioavailability", "Volatility", "Solubility"], ans: 1, exp: "Methylmercury biomagnifies."},
+  {q: "Cadmium accumulates in?", opts: ["Bone", "Kidney", "Liver", "Brain"], ans: 1, exp: "Nephrotoxic."},
+  {q: "Arsenic exposure causes?", opts: ["Health", "Skin lesions", "Strength", "Growth"], ans: 1, exp: "Carcinogenic."},
+  {q: "Zinc toxicity causes?", opts: ["Health", "GI upset", "Strength", "Vision"], ans: 1, exp: "Vomiting, diarrhoea."},
+  {q: "Copper essential for?", opts: ["Bones", "Enzymes", "Muscles", "Blood"], ans: 1, exp: "Trace element."},
+  {q: "Bioaccumulation factor is?", opts: ["Ratio in organism to environment", "Decrease", "No ratio", "Equal"], ans: 0, exp: "Buildup measure."},
+  {q: "Biomagnification factor increases with?", opts: ["Trophic level", "Decrease", "No change", "Time only"], ans: 0, exp: "Up food chain."},
+  {q: "Waste management includes?", opts: ["Dumping", "Treatment", "Burning", "Ignoring"], ans: 1, exp: "Proper disposal."},
+  {q: "Legislation sets?", opts: ["No limits", "Standards", "Subsidies", "Exemptions"], ans: 1, exp: "Regulatory standards."},
+  {q: "Awareness campaigns target?", opts: ["Industry", "Public", "Government", "All"], ans: 3, exp: "Public education."},
+  {q: "Phytoremediation hyperaccumulators?", opts: ["Exclude metals", "Take up high metals", "Die", "No effect"], ans: 1, exp: "Plants extract metals."},
+  {q: "Bioremediation uses?", opts: ["Fire", "Microbes", "Chemicals", "Machines"], ans: 1, exp: "Biological agents."},
+  {q: "Smith used fossils for?", opts: ["Age", "Correlation", "Color", "Weather"], ans: 1, exp: "Stratigraphic correlation."},
+  {q: "EGMT non-invasive means?", opts: ["Drilling", "No disturbance", "Mining", "Blasting"], ans: 1, exp: "No subsurface disturbance."},
+  {q: "GPR antenna frequency affects?", opts: ["Color", "Resolution vs depth", "Weight", "Cost"], ans: 1, exp: "Trade-off."},
+  {q: "ERT electrode array affects?", opts: ["Color", "DOI", "Temperature", "pH"], ans: 1, exp: "Spacing controls depth."},
+  {q: "EM frequency affects?", opts: ["Depth", "Color", "Weight", "Cost"], ans: 0, exp: "Penetration depth."},
+  {q: "Magnetometer gradient helps?", opts: ["Noise", "Locate small targets", "Color", "Weather"], ans: 1, exp: "Pinpoint anomalies."},
+  {q: "Brunton clinometer measures?", opts: ["Distance", "Dip angle", "Weight", "pH"], ans: 1, exp: "Dip measurement."},
+  {q: "LiDAR point density affects?", opts: ["Color", "DEM resolution", "Weight", "Cost"], ans: 1, exp: "More points = better DEM."},
+  {q: "GIS buffering analyzes?", opts: ["Color", "Proximity", "Weight", "Age"], ans: 1, exp: "Spatial analysis."},
+  {q: "O horizon C:N ratio is?", opts: ["Low", "High", "Zero", "Negative"], ans: 1, exp: "High organic matter."},
+  {q: "A horizon structure is?", opts: ["Massive", "Granular", "Platy", "Columnar"], ans: 1, exp: "Good structure."},
+  {q: "E horizon bleaching is due to?", opts: ["Addition", "Loss of iron", "Salt", "Sand"], ans: 1, exp: "Leaching."},
+  {q: "B horizon clay films indicate?", opts: ["Erosion", "Illuviation", "Weathering", "Leaching"], ans: 1, exp: "Clay movement."},
+  {q: "C horizon saprolite is?", opts: ["Bedrock", "Weathered rock", "Soil", "Sand"], ans: 1, exp: "Partially weathered."},
+  {q: "R horizon is?", opts: ["Soil", "Unweathered rock", "Clay", "Sand"], ans: 1, exp: "Bedrock."},
+  {q: "Map scale affects?", opts: ["Color", "Detail", "Weight", "Cost"], ans: 1, exp: "Larger scale = more detail."},
+  {q: "Fault symbol indicates?", opts: ["River", "Displacement", "Road", "Boundary"], ans: 1, exp: "Structural break."},
+  {q: "Preparation includes literature?", opts: ["No", "Yes", "Maybe", "Never"], ans: 1, exp: "Gather existing data."},
+  {q: "Field notes record?", opts: ["Weather", "Observations", "Population", "Economics"], ans: 1, exp: "Document findings."},
+  {q: "Data analysis uses?", opts: ["Guess", "Interpretation", "Color", "Weight"], ans: 1, exp: "Scientific interpretation."},
+  {q: "Map legend explains?", opts: ["Weather", "Symbols", "Population", "Economics"], ans: 1, exp: "Symbol key."},
+  {q: "Hazard mapping identifies?", opts: ["Safe zones", "Risk zones", "Population", "Roads"], ans: 1, exp: "Risk assessment."},
+  {q: "Urban maps avoid?", opts: ["Stable areas", "Hazard areas", "Flat areas", "Roads"], ans: 1, exp: "Avoid risks."},
+  {q: "Infrastructure maps prevent?", opts: ["Damage", "Construction", "Planning", "Survey"], ans: 0, exp: "Prevent damage."},
+  {q: "Conservation maps show?", opts: ["Industry", "Ecosystems", "Roads", "Buildings"], ans: 1, exp: "Habitat distribution."},
+  {q: "Agricultural maps show?", opts: ["Soil suitability", "Population", "Minerals", "Weather"], ans: 0, exp: "Land capability."},
+  {q: "DOI is not?", opts: ["Fixed", "Variable", "Constant", "Measured"], ans: 0, exp: "Depends on factors."},
+  {q: "Hand lens helps?", opts: ["Mapping", "Texture ID", "Drilling", "Survey"], ans: 1, exp: "Field identification."},
+  {q: "GNSS accuracy is?", opts: ["Km", "Meters to cm", "Miles", "Feet"], ans: 1, exp: "High precision."},
+  {q: "Cost challenge is?", opts: ["Low", "High", "Zero", "Negative"], ans: 1, exp: "Expensive."},
+  {q: "Terrain challenge is?", opts: ["Easy", "Difficult", "Flat", "Roaded"], ans: 1, exp: "Access problems."},
+  {q: "Data challenge is?", opts: ["Accurate", "Inaccurate", "Complete", "Digital"], ans: 1, exp: "Poor data."},
+  {q: "Technology challenge is?", opts: ["Advanced", "Lacking", "Cheap", "Fast"], ans: 1, exp: "Limited tools."},
+  {q: "Environmental challenge is?", opts: ["No rules", "Regulations", "Freedom", "Speed"], ans: 1, exp: "Compliance needed."},
+  {q: "Political challenge is?", opts: ["Stable", "Unstable", "Neutral", "Fast"], ans: 1, exp: "Policy risk."},
+  {q: "Security challenge is?", opts: ["Safe", "Risky", "Open", "Free"], ans: 1, exp: "Theft risk."},
+  {q: "Personnel challenge is?", opts: ["Abundant", "Shortage", "Skilled", "Cheap"], ans: 1, exp: "Lack of experts."},
+  {q: "Time challenge is?", opts: ["Short", "Long", "Instant", "Zero"], ans: 1, exp: "Takes years."},
+  {q: "Biogeography integrates genetics to explain?", opts: ["Rock types", "Population differentiation across space", "Weather", "Minerals"], ans: 1, exp: "Genetics explains variation in distribution."},
+  {q: "Climatology contributes to biogeography by providing data on?", opts: ["Rocks", "Temperature and precipitation patterns", "Population", "Economics"], ans: 1, exp: "Climate controls distribution."},
+  {q: "Pedology is important in biogeography because soil determines?", opts: ["Air", "Plant growth and distribution", "Water", "Animals"], ans: 1, exp: "Edaphic factors control plants."},
+  {q: "Zoology contributes to biogeography through?", opts: ["Rock ID", "Animal physiology and behavior", "Soil", "Climate"], ans: 1, exp: "Animal biology affects distribution."},
+  {q: "Biogeography examines human impact on?", opts: ["Rocks", "Ecosystem integrity", "Minerals", "Weather"], ans: 1, exp: "Effects of humans on ecological integrity."},
+  {q: "Energy flow study in biogeography relates to?", opts: ["Mining", "Trophic levels", "Rocks", "Soil"], ans: 1, exp: "Energy through ecosystems."},
+  {q: "Water cycle study in biogeography explains?", opts: ["Minerals", "Plant distribution", "Rocks", "Population"], ans: 1, exp: "Water availability controls biota."},
+  {q: "Nutrient cycle study explains?", opts: ["Rocks", "Ecosystem productivity", "Weather", "Population"], ans: 1, exp: "Nutrients determine functioning."},
+  {q: "Analytical biogeography uses?", opts: ["Fossils", "Current distribution data", "Rocks", "Climate history"], ans: 1, exp: "Where organisms live today."},
+  {q: "Ecological biogeography tests?", opts: ["Past climate", "Species-environment relationships", "Rocks", "Minerals"], ans: 1, exp: "Life and environment relations."},
+  {q: "Historical biogeography tests?", opts: ["Present", "Past geological events", "Rocks", "Soil"], ans: 1, exp: "Continental drift effects."},
+  {q: "Biogeographical realm is defined by?", opts: ["Politics", "Distinct biota", "Rocks", "Climate only"], ans: 1, exp: "Areas of similar biota."},
+  {q: "Barrier to dispersal includes?", opts: ["Road", "Ocean", "City", "Farm"], ans: 1, exp: "Physical barriers."},
+  {q: "Wegener used?", opts: ["Economics", "Fossil evidence", "Weather", "Population"], ans: 1, exp: "Biological similarity evidence."},
+  {q: "Pangaea broke into?", opts: ["1", "2", "Laurasia and Gondwana", "5"], ans: 2, exp: "Split into northern and southern."},
+  {q: "Mesosaurus proves?", opts: ["Ocean", "Land connection", "Climate", "Volcano"], ans: 1, exp: "Freshwater reptile."},
+  {q: "Lystrosaurus proves?", opts: ["Ocean", "Land connection", "Air", "Ice"], ans: 1, exp: "Land reptile."},
+  {q: "Glossopteris proves?", opts: ["Ocean", "Land connection", "Desert", "Glacier"], ans: 1, exp: "Heavy seeds."},
+  {q: "Coal in Antarctica means?", opts: ["Cold", "Was tropical", "Dry", "Volcanic"], ans: 1, exp: "Climate shift."},
+  {q: "Glacial in India means?", opts: ["Tropical", "Was polar", "Desert", "Ocean"], ans: 1, exp: "Continental movement."},
+  {q: "Fluvisol hazard is?", opts: ["Drought", "Flooding", "Acidity", "Salinity"], ans: 1, exp: "Floodplain soils."},
+  {q: "Andosol property is?", opts: ["Low P", "High P fixation", "Saline", "Sandy"], ans: 1, exp: "Volcanic soil."},
+  {q: "Chernozem is?", opts: ["Desert", "Grassland fertile", "Wetland", "Acid"], ans: 1, exp: "High organic matter."},
+  {q: "Calcisol problem is?", opts: ["Acid", "Caliche layer", "Peat", "Sand"], ans: 1, exp: "CaCO3 accumulation."},
+  {q: "Lixisol fertility is?", opts: ["High", "Low", "Medium", "Zero"], ans: 1, exp: "Low base saturation."},
+  {q: "Luvisol fertility is?", opts: ["Low", "High", "Zero", "Negative"], ans: 1, exp: "Higher base saturation."},
+  {q: "Histosol use is?", opts: ["Crops", "Carbon storage", "Mining", "Roads"], ans: 1, exp: "Organic soils."},
+  {q: "Anthrosol example is?", opts: ["Natural", "Terraced rice", "Desert", "Glacier"], ans: 1, exp: "Human made."},
+  {q: "Xerophyte adaptation is?", opts: ["Big leaves", "Small leaves", "No roots", "No stem"], ans: 1, exp: "Reduce water loss."},
+  {q: "CAM plant adaptation is?", opts: ["Day CO2", "Night CO2", "No CO2", "Water CO2"], ans: 1, exp: "Physiological."},
+  {q: "Migration adaptation is?", opts: ["Structural", "Behavioral", "Physiological", "Genetic"], ans: 1, exp: "Behavior."},
+  {q: "Freeze-thaw is?", opts: ["Chemical", "Physical", "Biological", "Aeolian"], ans: 1, exp: "Ice expansion."},
+  {q: "Hydrolysis weathers?", opts: ["Quartz", "Feldspar", "Calcite", "Sand"], ans: 1, exp: "Chemical weathering."},
+  {q: "Root weathering is?", opts: ["Physical", "Chemical", "Biological", "Wind"], ans: 2, exp: "Biological."},
+  {q: "Granite parent gives?", opts: ["Clay", "Sandy soil", "Peat", "Salt"], ans: 1, exp: "Quartz rich."},
+  {q: "Humid climate causes?", opts: ["Accumulation", "Leaching", "Salt", "No change"], ans: 1, exp: "Leaching."},
+  {q: "Steep slope soil is?", opts: ["Deep", "Shallow", "Medium", "Zero"], ans: 1, exp: "Erosion."},
+  {q: "Earthworms do?", opts: ["Destroy", "Mix soil", "Leach", "Salt"], ans: 1, exp: "Bioturbation."},
+  {q: "Old soil has?", opts: ["Weak horizons", "Strong horizons", "No horizons", "Sand only"], ans: 1, exp: "Time effect."},
+  {q: "Reconnaissance is?", ops: ["Detailed", "Broad", "Drilling", "Lab"], ans: 1, exp: "Large area."},
+  {q: "Geological map shows?", opts: ["Weather", "Lithology", "Population", "Roads"], ans: 1, exp: "Rock types."},
+  {q: "Geophysics detects?", opts: ["Color", "Subsurface", "Weather", "Population"], ans: 1, exp: "Physical properties."},
+  {q: "Geochemistry detects?", opts: ["Rocks", "Elements", "Weather", "Population"], ans: 1, exp: "Chemical anomalies."},
+  {q: "Drilling confirms?", opts: ["Weather", "Ore body", "Soil", "Water"], ans: 1, exp: "Size and grade."},
+  {q: "Mining degrades?", opts: ["Air", "Land", "Water", "All"], ans: 3, exp: "Multiple impacts."},
+  {q: "AMD has low?", opts: ["pH", "Metals", "O2", "Temp"], ans: 0, exp: "Acidic."},
+  {q: "Dust causes?", opts: ["Health", "Wealth", "Growth", "Rain"], ans: 0, exp: "Respiratory."},
+  {q: "CO2 from mining causes?", opts: ["Cooling", "Warming", "No effect", "Rain"], ans: 1, exp: "Climate change."},
+  {q: "Noise causes?", opts: ["Calm", "Stress", "Growth", "Rain"], ans: 1, exp: "Disturbance."},
+  {q: "Displacement causes?", opts: ["Wealth", "Conflict", "Health", "Growth"], ans: 1, exp: "Social impact."},
+  {q: "Exploration cost is?", opts: ["Low", "High", "Zero", "Negative"], ans: 1, exp: "Expensive."},
+  {q: "Terrain affects?", opts: ["Speed", "Cost", "Ore", "Weather"], ans: 1, exp: "Logistics."},
+  {q: "Data quality affects?", opts: ["Success", "Failure", "Weather", "Population"], ans: 1, exp: "Risk."},
+  {q: "Technology affects?", opts: ["Detection", "Color", "Weather", "Population"], ans: 0, exp: "Detection ability."},
+  {q: "Environment affects?", opts: ["Speed", "Permits", "Ore", "Weather"], ans: 1, exp: "Regulations."},
+  {q: "Politics affects?", opts: ["Geology", "Investment", "Ore", "Weather"], ans: 1, exp: "Policy."},
+  {q: "Security affects?", opts: ["Safety", "Ore", "Weather", "Population"], ans: 0, exp: "Risk."},
+  {q: "Skills affect?", opts: ["Execution", "Ore", "Weather", "Population"], ans: 0, exp: "Project quality."},
+  {q: "Time affects?", opts: ["Speed", "Duration", "Ore", "Weather"], ans: 1, exp: "Years."},
+  {q: "River meander has?", opts: ["Cut bank", "Point bar", "Delta", "Floodplain"], ans: 1, exp: "Deposition."},
+  {q: "Dune type is?", opts: ["Barchan", "Delta", "Moraine", "Beach"], ans: 0, exp: "Wind formed."},
+  {q: "Beach is?", opts: ["Fluvial", "Marine", "Glacial", "Aeolian"], ans: 1, exp: "Coastal."},
+  {q: "Estuary is?", opts: ["Fluvial", "Transitional", "Marine", "Glacial"], ans: 1, exp: "Mixing zone."},
+  {q: "Cirque is?", opts: ["Fluvial", "Glacial", "Marine", "Aeolian"], ans: 1, exp: "Ice erosion."},
+  {q: "Lake is?", opts: ["Marine", "Continental", "Glacial", "Aeolian"], ans: 1, exp: "Land water."},
+  {q: "Lead route is?", opts: ["Air", "Ingestion", "Skin", "All"], ans: 3, exp: "Multiple pathways."},
+  {q: "Mercury form is?", opts: ["Elemental", "Methyl", "Both", "None"], ans: 2, exp: "Toxic forms."},
+  {q: "Cadmium target is?", opts: ["Kidney", "Liver", "Lung", "Brain"], ans: 0, exp: "Nephrotoxic."},
+  {q: "Arsenic effect is?", opts: ["Cancer", "Health", "Growth", "Strength"], ans: 0, exp: "Carcinogen."},
+  {q: "Zinc need is?", opts: ["Trace", "Macro", "Toxic", "None"], ans: 0, exp: "Essential trace."},
+  {q: "Copper need is?", opts: ["Trace", "Macro", "Toxic", "None"], ans: 0, exp: "Essential trace."},
+  {q: "BAF measures?", opts: ["Accumulation", "Magnification", "Weather", "Population"], ans: 0, exp: "Bioaccumulation."},
+  {q: "BMF measures?", opts: ["Accumulation", "Magnification", "Weather", "Population"], ans: 1, exp: "Biomagnification."},
+  {q: "Waste treatment reduces?", opts: ["Metals", "Air", "Water", "All"], ans: 3, exp: "Pollution."},
+  {q: "Law enforces?", opts: ["Standards", "Freedom", "Mining", "Drilling"], ans: 0, exp: "Regulation."},
+  {q: "Education reduces?", opts: ["Exposure", "Mining", "Drilling", "Weather"], ans: 0, exp: "Awareness."},
+  {q: "Plants remove?", opts: ["Metals", "Rocks", "Weather", "Population"], ans: 0, exp: "Phytoremediation."},
+  {q: "Microbes degrade?", opts: ["Metals", "Organics", "Rocks", "Weather"], ans: 1, exp: "Bioremediation."},
+  {q: "Smith correlated?", opts: ["Rocks", "Fossils", "Weather", "Population"], ans: 1, exp: "Stratigraphy."},
+  {q: "EGMT purpose is?", opts: ["Mining", "Assessment", "Drilling", "Weather"], ans: 1, exp: "Environmental assessment."},
+  {q: "GPR depth is?", opts: ["Deep", "Shallow", "Zero", "Infinite"], ans: 1, exp: "Shallow imaging."},
+  {q: "ERT measures?", opts: ["Magnetism", "Resistivity", "Gravity", "Radiation"], ans: 1, exp: "Electrical."},
+  {q: "EM measures?", opts: ["Magnetism", "Conductivity", "Gravity", "Radiation"], ans: 1, exp: "Electromagnetic."},
+  {q: "Magnetometer measures?", opts: ["Magnetism", "Resistivity", "Gravity", "Radiation"], ans: 0, exp: "Magnetic field."},
+  {q: "Brunton measures?", opts: ["Distance", "Orientation", "Weight", "Age"], ans: 1, exp: "Strike and dip."},
+  {q: "LiDAR measures?", opts: ["Color", "Elevation", "Weight", "Age"], ans: 1, exp: "Topography."},
+  {q: "GIS analyzes?", opts: ["Color", "Spatial data", "Weight", "Age"], ans: 1, exp: "Spatial analysis."},
+  {q: "O horizon has?", opts: ["Minerals", "Organics", "Clay", "Sand"], ans: 1, exp: "Organic matter."},
+  {q: "A horizon has?", opts: ["Minerals", "Organics", "Clay", "Sand"], ans: 1, exp: "Topsoil."},
+  {q: "E horizon loses?", opts: ["Clay", "Iron", "Sand", "Salt"], ans: 1, exp: "Leaching."},
+  {q: "B horizon gains?", opts: ["Clay", "Iron", "Sand", "Salt"], ans: 1, exp: "Illuviation."},
+  {q: "C horizon is?", opts: ["Soil", "Saprolite", "Bedrock", "Sand"], ans: 1, exp: "Parent material."},
+  {q: "R horizon is?", opts: ["Soil", "Saprolite", "Bedrock", "Sand"], ans: 2, exp: "Bedrock."},
+  {q: "Map element is?", opts: ["Legend", "Weather", "Population", "Roads"], ans: 0, exp: "Key."},
+  {q: "Fault symbol is?", opts: ["Line", "Dot", "Color", "Number"], ans: 0, exp: "Black line."},
+  {q: "Step 1 is?", opts: ["Field", "Prep", "Analysis", "Map"], ans: 1, exp: "Preparation."},
+  {q: "Step 2 is?", opts: ["Prep", "Field", "Analysis", "Map"], ans: 1, exp: "Field observation."},
+  {q: "Step 3 is?", opts: ["Prep", "Field", "Analysis", "Map"], ans: 2, exp: "Data analysis."},
+  {q: "Step 4 is?", opts: ["Prep", "Field", "Analysis", "Map"], ans: 3, exp: "Map construction."},
+  {q: "Hazard use is?", opts: ["Mining", "Risk assessment", "Weather", "Population"], ans: 1, exp: "Assess hazards."},
+  {q: "Urban use is?", opts: ["Mining", "Planning", "Weather", "Population"], ans: 1, exp: "Land use planning."},
+  {q: "Infrastructure use is?", opts: ["Mining", "Protection", "Weather", "Population"], ans: 1, exp: "Protect infrastructure."},
+  {q: "Conservation use is?", opts: ["Mining", "Habitat", "Weather", "Population"], ans: 1, exp: "Manage habitats."},
+  {q: "Agriculture use is?", opts: ["Mining", "Soil suitability", "Weather", "Population"], ans: 1, exp: "Land capability."},
+  {q: "DOI varies with?", opts: ["Color", "Method", "Weather", "Population"], ans: 1, exp: "Method dependent."},
+  {q: "Hand lens magnification is?", opts: ["1x", "10x", "100x", "1000x"], ans: 1, exp: "10x-20x."},
+  {q: "GNSS accuracy is?", opts: ["Km", "M-Cm", "Miles", "Feet"], ans: 1, exp: "High accuracy."},
+   {q: "Biogeography scope includes?", opts: ["Phyto", "Zoo", "Both", "Neither"], ans: 2, exp: "Plants and animals."},
+  {q: "Biogeography aim includes?", opts: ["Origin", "Distribution", "Function", "All"], ans: 3, exp: "Comprehensive aim."},
+  {q: "Region basis is?", opts: ["Politics", "Biota", "Rocks", "Climate"], ans: 1, exp: "Similar biota."},
+  {q: "Boundary factor is?", opts: ["Climate", "Tectonics", "Both", "Neither"], ans: 2, exp: "Climate and tectonics."},
+  {q: "Wegener evidence is?", opts: ["Geology", "Biology", "Both", "Neither"], ans: 2, exp: "Multiple evidence."},
+  {q: "Pangaea evidence is?", opts: ["Fossils", "Climate", "Fit", "All"], ans: 3, exp: "Multiple lines."},
+  {q: "Horizon 1 is?", opts: ["O", "Rock", "Water", "Air"], ans: 0, exp: "Organic."},
+  {q: "Horizon 2 is?", opts: ["A", "Rock", "Water", "Air"], ans: 0, exp: "Topsoil."},
+  {q: "Horizon 3 is?", opts: ["E", "Rock", "Water", "Air"], ans: 0, exp: "Leached."},
+  {q: "Horizon 4 is?", opts: ["B", "Rock", "Water", "Air"], ans: 0, exp: "Accumulation."},
+  {q: "Horizon 5 is?", opts: ["C", "Rock", "Water", "Air"], ans: 0, exp: "Parent."},
+  {q: "Horizon 6 is?", opts: ["R", "Rock", "Water", "Air"], ans: 0, exp: "Bedrock."},
+];
+     // ADD YOUR QUESTIONS HERE
+
+    let quizQuestions=[], userAnswers=[], timerInterval, timeLeft;
+
+    function goDashboard(){ window.location.href = "dashboard.html"; }
+    function hideAll(){ ['setup','quiz','analysis'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+
+    function saveScore(score, qCount){
+      let history = JSON.parse(localStorage.getItem('testHistory') || '[]');
+      history.push({ course: COURSE_NAME, score: score, qCount: qCount, date: Date.now() });
+      localStorage.setItem('testHistory', JSON.stringify(history));
+    }
+
+    function startQuiz(){
+      const qCount=parseInt(document.getElementById('qCount').value);
+      const minutes=parseInt(document.getElementById('time').value);
+      const pool=[...questionBank];
+      quizQuestions=pool.sort(()=>0.5-Math.random()).slice(0, Math.min(qCount, pool.length));
+      userAnswers=Array(quizQuestions.length).fill(null);
+      timeLeft=minutes*60;
+      hideAll();
+      document.getElementById('quiz').classList.remove('hidden');
+      buildQuestions();
+      buildNav();
+      updateTimer(); // show immediately
+      timerInterval=setInterval(updateTimer,1000);
+      setupScrollSpy();
+    }
+
+    function buildNav(){
+      const nav=document.getElementById('qNav');
+      nav.innerHTML="";
+      quizQuestions.forEach((_,i)=>{
+        const btn=document.createElement('button');
+        btn.innerText=i+1;
+        btn.onclick=()=>document.getElementById(`q-${i}`).scrollIntoView({behavior:'smooth', block:'start'});
+        nav.appendChild(btn);
+      });
+    }
+
+    function buildQuestions(){
+      const container = document.getElementById('questionsContainer');
+      container.innerHTML = "";
+      quizQuestions.forEach((q,i)=>{
+        const div = document.createElement('div');
+        div.className = "card";
+        div.id = `q-${i}`;
+        div.innerHTML = `
+          <div class="question">Q${i+1}: ${q.q}</div>
+          <div class="options">
+            ${q.opts.map((opt,j)=>`
+              <label><input type="radio" name="opt-${i}" ${userAnswers[i]==j?'checked':''} onchange="userAnswers[${i}]=${j}; updateNav()"> ${opt}</label>
+            `).join('')}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateNav(){
+      [...document.querySelectorAll('.q-nav button')].forEach((b,i)=>{
+        b.classList.toggle('answered',userAnswers[i]!==null);
+      });
+    }
+
+    function setupScrollSpy(){
+      const observer = new IntersectionObserver((entries)=>{
+        entries.forEach(entry=>{
+          if(entry.isIntersecting){
+            const id = entry.target.id.split('-')[1];
+            [...document.querySelectorAll('.q-nav button')].forEach((b,i)=>{
+              b.classList.toggle('active', i==id);
+            });
+          }
+        })
+      }, {threshold: 0.4});
+      quizQuestions.forEach((_,i)=>{ observer.observe(document.getElementById(`q-${i}`)); })
+    }
+
+    function updateTimer(){
+      const mins = Math.floor(timeLeft/60);
+      const secs = (timeLeft%60).toString().padStart(2,'0');
+      document.getElementById('timer').innerText = `Time: ${mins}:${secs}`;
+      timeLeft--;
+      if(timeLeft<0) submitQuiz();
+    }
+
+    function submitQuiz(){
+      clearInterval(timerInterval);
+      let correct=0;
+      quizQuestions.forEach((q,i)=>{ if(userAnswers[i]===q.ans) correct++; });
+      const wrong = quizQuestions.length - correct;
+      const score=Math.round(correct/quizQuestions.length*100);
+      saveScore(score, quizQuestions.length);
+      const result={course:COURSE_NAME,qCount:quizQuestions.length,correct,wrong,score,questions:quizQuestions,answers:userAnswers};
+      showAnalysis(result);
+    }
+
+    function showAnalysis(result){
+      hideAll();
+      document.getElementById('analysis').classList.remove('hidden');
+      const box=document.getElementById('analysisBox');
+      box.innerHTML=`
+        <h2 style="text-align:center; color:var(--accent);">Test Submitted!</h2>
+        <div class="score-card">
+          <h2>Score: ${result.correct}/${result.qCount} - ${result.score}%</h2>
+          <div class="stats">
+            <span class="correct-stat">Correct: ${result.correct}</span>
+            <span class="wrong-stat">Wrong/Not Answered: ${result.wrong}</span>
+          </div>
+        </div>
+        <h3 class="review-title">Question Review</h3>
+      `+ result.questions.map((q,i)=>{
+        const ua=result.answers[i];
+        const isCorrect = ua===q.ans;
+        const cls=isCorrect?'correct':'wrong';
+        const status=isCorrect?'✓ Correct':'✗ Wrong';
+        return `<div class="review-item ${cls}">
+          <div class="review-head">
+            <span>Q${i+1}. ${q.q}</span>
+            <span class="review-status ${isCorrect?'':'wrong'}">${status}</span>
+          </div>
+          <div><b>Your Answer:</b> ${ua!==null?q.opts[ua]:"Not Answered"}</div>
+          ${!isCorrect? `<div><b>Correct Answer:</b> ${q.opts[q.ans]}</div>` : ''}
+          <div style="margin-top:6px; color:var(--muted); font-size:14px;"><i>Explanation: ${q.exp}</i></div>
+        </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
