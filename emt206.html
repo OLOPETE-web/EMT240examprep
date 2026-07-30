@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMT 206 Quiz</title>
+  <style>
+    :root{
+      --bg:#f5f7fa; --card:#ffffff; --accent:#2563eb; --text:#1e293b;
+      --muted:#64748b; --good:#16a34a; --bad:#dc2626;
+    }
+    *{box-sizing:border-box; font-family: system-ui, sans-serif; scroll-behavior: smooth;}
+    body{margin:0; background:var(--bg); color:var(--text);}
+    header{display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:var(--card); box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:10;}
+    select{padding:8px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:var(--text);}
+    button{background:var(--accent); border:none; padding:10px 16px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer;}
+    button.ghost{background:transparent; border:1px solid var(--muted); color:var(--text);}
+   .container{padding:20px; max-width:900px; margin:auto;}
+   .card{background:var(--card); padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+   .hidden{display:none;}
+   .q-nav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; position:sticky; top:60px; background:var(--bg); padding:10px 0; z-index:9;}
+   .q-nav button{padding:6px 10px; background:#fff; color:var(--text); border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;}
+   .q-nav button.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent);}
+   .q-nav button.answered{background:var(--accent); color:#fff; border-color:var(--accent);}
+   .question{font-size:18px; margin-bottom:12px; font-weight:600;}
+   .options{display:grid; gap:8px;}
+   .options label{display:flex; gap:8px; padding:10px; background:#f8fafc; border-radius:8px; cursor:pointer; border:1px solid #e2e8f0;}
+   .options label:hover{background:#eff6ff;}
+   .score-card{background:var(--card); padding:20px; border-radius:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:20px;}
+   .score-card h2{color:var(--accent); margin:0 0 10px 0;}
+   .score-card.stats{display:flex; justify-content:center; gap:20px; margin-top:10px;}
+   .correct-stat{color:var(--good); font-weight:600;}
+   .wrong-stat{color:var(--bad); font-weight:600;}
+   .review-title{text-align:center; color:var(--accent); font-size:20px; font-weight:700; margin:20px 0;}
+   .review-item{padding:16px; border-left:5px solid; margin-bottom:12px; background:var(--card); border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+   .review-item.correct{border-color:var(--good);}
+   .review-item.wrong{border-color:var(--bad);}
+   .review-head{display:flex; justify-content:space-between; align-items:start; margin-bottom:8px; font-weight:600;}
+   .review-status{color:var(--good); font-weight:700;}
+   .review-status.wrong{color:var(--bad);}
+  </style>
+</head>
+<body>
+  <header>
+    <div id="quizTitle">EMT 206 Quiz</div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <div id="timer" style="font-weight:600; color:var(--accent);"></div>
+      <button class="ghost" onclick="goDashboard()">Dashboard</button>
+    </div>
+  </header>
+  <div class="container">
+    <section id="setup">
+      <h2>Test Setup</h2>
+      <div class="card">
+        <label>No of Questions:</label>
+        <select id="qCount"><option>20</option><option>50</option><option>100</option></select><br><br>
+        <label>Time:</label>
+        <select id="time">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+        </select><br><br>
+        <button onclick="startQuiz()">Start Test</button>
+      </div>
+    </section>
+
+    <section id="quiz" class="hidden">
+      <div class="q-nav" id="qNav"></div>
+      <div id="questionsContainer"></div>
+      <div style="text-align:center; margin-top:20px; padding-bottom:40px;">
+        <button onclick="submitQuiz()">Submit Test</button>
+      </div>
+    </section>
+
+    <section id="analysis" class="hidden">
+      <div id="analysisBox"></div>
+      <div style="text-align:center; margin-top:20px;">
+        <button onclick="goDashboard()">Back to Dashboard</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const COURSE_NAME = "EMT 206";
+    const questionBank = [
+      // 1. Remote Sensing Basics + Platforms (10 Qs)
+    {q: "What is the primary purpose of remote sensing?", opts: ["To collect data on ground", "To analyze spatial data", "To gather information about Earth’s surface without direct contact", "To create maps"], ans: 2, exp: "Remote sensing collects data about objects/areas without physical contact using sensors on platforms."},
+    {q: "Which of the following is NOT a type of remote sensing platform?", opts: ["Ground-based", "Airborne", "Spaceborne", "Underwater"], ans: 3, exp: "The 3 main platforms are ground-based, airborne, and spaceborne. Underwater is not a standard RS platform."},
+    {q: "What is the altitude range for spaceborne remote sensing platforms?", opts: ["0 – few meters", "Few hundred meters – 15 km", "150 km – 36,000 km", "Above 100,000 km"], ans: 2, exp: "Spaceborne platforms like satellites operate between 150 km for LEO to 36,000 km for GEO."},
+    {q: "Which platform is best for high-resolution local mapping?", opts: ["Ground-based", "Airborne", "Spaceborne", "Satellite-based"], ans: 1, exp: "Airborne platforms like aircraft and drones can fly low and capture very high spatial resolution data."},
+    {q: "What is a key advantage of airborne remote sensing over satellite?", opts: ["Global coverage", "Very high spatial resolution", "Low cost", "Daily revisit time"], ans: 1, exp: "Airborne sensors fly closer to targets, giving higher spatial resolution than most satellites."},
+    {q: "Which sensor type is ideal for vegetation mapping?", opts: ["RGB camera", "Multispectral camera", "Thermal camera", "LiDAR"], ans: 1, exp: "Multispectral sensors capture NIR and Red bands used to calculate NDVI for vegetation health."},
+    {q: "What is the main application of ground-based remote sensing platforms?", opts: ["Global climate studies", "Detailed surface information", "Ocean monitoring", "Weather forecasting"], ans: 1, exp: "Ground-based sensors provide very detailed, close-range measurements for calibration and validation."},
+    {q: "Which remote sensing platform is LEAST affected by Earth’s atmosphere?", opts: ["Ground-based", "Airborne", "Spaceborne", "None of the above"], ans: 2, exp: "Spaceborne sensors are above most of the atmosphere, reducing atmospheric interference."},
+    {q: "What is a common use of LiDAR in remote sensing?", opts: ["Vegetation health analysis", "Generating dense 3D point clouds", "Thermal imaging", "Soil moisture mapping"], ans: 1, exp: "LiDAR emits laser pulses to measure distances and create accurate 3D models and DEMs."},
+    {q: "Which type of drone is best for large-area surveys?", opts: ["Multirotor", "Fixed-wing", "VTOL", "Helicopter"], ans: 1, exp: "Fixed-wing drones have longer flight times and higher speed, making them efficient for large areas."},
+    {q: "What does a spectral signature represent?", opts: ["Temperature of an object", "Unique reflectance pattern of a material across wavelengths", "Height of an object", "Size of a pixel"], ans: 1, exp: "A spectral signature is the characteristic way a material reflects/emits EM radiation across the spectrum."},
+    {q: "In which region of the EM spectrum are microwaves found?", opts: ["0.4 - 0.7 µm", "0.7 - 3.0 µm", "1 mm - 1 m", "10 - 100 nm"], ans: 2, exp: "Microwave region ranges approximately from 1mm to 1m in wavelength."},
+    {q: "What is a major advantage of microwave remote sensing?", opts: ["High spatial resolution", "Can penetrate clouds and operate day/night", "Detects chlorophyll", "Low cost"], ans: 1, exp: "Microwaves can penetrate clouds, rain, and darkness, enabling all-weather, day-night imaging."},
+    {q: "Which sensor is an example of active microwave remote sensing?", opts: ["Radiometer", "SAR - Synthetic Aperture Radar", "Multispectral camera", "Thermal scanner"], ans: 1, exp: "SAR emits its own microwave pulses and records the backscatter, making it an active sensor."},
+    {q: "What property causes water to have low microwave backscatter?", opts: ["High roughness", "Specular reflection away from sensor", "High temperature", "High chlorophyll"], ans: 1, exp: "Smooth water surfaces cause specular reflection where microwave energy bounces away from the sensor."},
+    {q: "Vegetation in microwave region typically shows?", opts: ["Very low backscatter", "Volume scattering due to leaves and branches", "No interaction", "Thermal emission only"], ans: 1, exp: "Microwaves interact with vegetation structure causing volume scattering from leaves, stems, branches."},
+    {q: "Which band is commonly used in SAR for soil moisture?", opts: ["X-band", "C-band", "L-band", "All of the above"], ans: 3, exp: "L, C, and X bands are all used in SAR. L-band penetrates vegetation better for soil moisture."},
+    {q: "What does NDVI primarily use?", opts: ["Microwave bands", "Red and Near Infrared bands", "Thermal bands", "Blue and Green bands"], ans: 1, exp: "NDVI = (NIR - Red)/(NIR + Red). It uses optical spectral bands, not microwave."},
+    {q: "Soil with high moisture content in microwave appears?", opts: ["Dark", "Bright due to high dielectric constant", "Same as dry soil", "Transparent"], ans: 1, exp: "Wet soil has higher dielectric constant, increasing radar backscatter and appearing brighter."},
+    {q: "Passive microwave sensors measure?", opts: ["Backscattered energy from own source", "Naturally emitted microwave radiation", "Reflected sunlight", "Laser pulses"], ans: 1, exp: "Passive microwave sensors like radiometers detect naturally emitted microwave energy from Earth."},
+
+
+// 3. Drone Mapping & Surveying (10 Qs)
+
+    {q: "Which GPS type is commonly used for drone geotagging?", opts: ["DGPS", "RTK-GPS", "Standard GPS", "GLONASS only"], ans: 1, exp: "RTK-GPS provides centimeter-level accuracy for precise drone mapping and surveying."},
+    {q: "Photogrammetry using drones primarily produces?", opts: ["DEM, Orthomosaic, 3D Model", "Thermal maps only", "Radar images", "Spectral signatures"], ans: 0, exp: "Drone photogrammetry processes overlapping images to generate DEM, orthomosaic, and 3D models."},
+    {q: "What is the main benefit of using VTOL drones?", opts: ["Longest flight time", "Vertical takeoff + fixed-wing efficiency", "Lowest cost", "Highest payload"], ans: 1, exp: "VTOL combines vertical takeoff/landing of multirotors with endurance of fixed-wing."},
+    {q: "Ground Control Points GCPs are used in drone mapping to?", opts: ["Increase flight time", "Improve georeferencing accuracy", "Reduce image overlap", "Detect vegetation"], ans: 1, exp: "GCPs with known coordinates improve the accuracy of the final orthomosaic and DEM."},
+    {q: "What overlap is recommended for drone photogrammetry?", opts: ["30% front, 30% side", "50% front, 50% side", "70-80% front, 60-70% side", "100% front, 100% side"], ans: 2, exp: "High overlap 70-80% front and 60-70% side ensures good 3D reconstruction in photogrammetry."},
+    {q: "LiDAR on drones is preferred over photogrammetry for?", opts: ["Vegetation indices", "Areas with dense vegetation/canopy penetration", "Color imagery", "Large flat areas"], ans: 1, exp: "LiDAR pulses can penetrate canopy gaps to get ground elevation, unlike photogrammetry."},
+    {q: "Which is NOT a drone mapping application?", opts: ["Construction site monitoring", "Precision agriculture", "Deep ocean floor mapping", "Topographic survey"], ans: 2, exp: "Drones cannot operate underwater. Ocean floor mapping requires sonar/sonar platforms."},
+    {q: "The process of stitching drone images into one map is called?", opts: ["Classification", "Orthorectification", "Digitization", "Interpolation"], ans: 1, exp: "Orthorectification corrects distortions and stitches images into a geometrically accurate orthomosaic."},
+    {q: "What does GSD mean in drone mapping?", opts: ["Global Survey Data", "Ground Sample Distance", "GPS Signal Density", "General Sensor Data"], ans: 1, exp: "GSD is the distance on the ground represented by one pixel. Smaller GSD = higher resolution."},
+    {q: "Which software is industry standard for drone photogrammetry?", opts: ["ArcGIS", "Pix4D", "QGIS", "AutoCAD"], ans: 1, exp: "Pix4D is widely used for processing drone images into maps and 3D models."},
+
+// 4. Processing Software + Sensor Resolutions (10 Qs)
+
+    {q: "Which software is cloud-based for drone project management?", opts: ["Agisoft Metashape", "DroneDeploy", "DJI Terra", "QGIS"], ans: 1, exp: "DroneDeploy is cloud-based and focuses on processing, project management and client reporting."},
+    {q: "Spatial resolution refers to?", opts: ["Number of spectral bands", "Smallest ground area a pixel represents", "Time between image captures", "Radiometric bit depth"], ans: 1, exp: "Spatial resolution is the size of the smallest object that can be detected on the ground."},
+    {q: "Spectral resolution is defined as?", opts: ["Pixel size", "Ability to distinguish wavelengths", "Time resolution", "Energy sensitivity"], ans: 1, exp: "Spectral resolution is the ability of a sensor to define fine wavelength intervals."},
+    {q: "Radiometric resolution refers to?", opts: ["Spatial detail", "Number of bands", "Sensitivity to differences in energy", "Revisit time"], ans: 2, exp: "Radiometric resolution is the smallest difference in radiation intensity a sensor can detect."},
+    {q: "Temporal resolution is?", opts: ["Wavelength range", "Pixel size", "Time between successive images of same area", "Bit depth"], ans: 2, exp: "Temporal resolution is the frequency at which a sensor images the same location."},
+    {q: "For Natural Color Landsat 8 image, which bands are RGB?", opts: ["543", "432", "764", "652"], ans: 1, exp: "432 = Red, Green, Blue gives true natural color composite."},
+    {q: "Which band combination is best for vegetation analysis?", opts: ["432", "543", "654", "754"], ans: 2, exp: "654 is commonly used for vegetation analysis with NIR, Red, Green."},
+    {q: "False Color Urban composite uses which bands?", opts: ["432", "543", "764", "652"], ans: 2, exp: "764 highlights urban areas, with SWIR, NIR, Red."},
+    {q: "QGIS and ArcGIS are mainly used for?", opts: ["Image acquisition", "Photogrammetry", "GIS analysis and spatial data integration", "Drone flight planning"], ans: 2, exp: "QGIS and ArcGIS are GIS platforms for spatial analysis, mapping, and data integration."},
+    {q: "DJI Terra is optimized for?", opts: ["Any drone brand", "DJI drone ecosystem", "Satellite data only", "LiDAR only"], ans: 1, exp: "DJI Terra is designed to work seamlessly with DJI drones for fast processing."},
+
+// 5. Applications in Agriculture (10 Qs)
+    {q: "What is Precision Agriculture?", opts: ["Uniform application of inputs", "Variable management based on site conditions", "Organic farming only", "Irrigation without sensors"], ans: 1, exp: "Precision agriculture uses site-specific data to vary inputs like fertilizer and water within a field."},
+    {q: "Which RS tool is used to detect crop stress?", opts: ["RGB camera", "Multispectral/NIR sensors", "LiDAR", "Thermal only"], ans: 1, exp: "Multispectral sensors detect changes in reflectance, used for NDVI to assess crop health/stress."},
+    {q: "Variable Rate Technology VRT is used for?", opts: ["Uniform seeding", "Applying inputs at varying rates across a field", "Manual weeding", "Harvesting"], ans: 1, exp: "VRT applies fertilizers, pesticides, water at rates that match spatial variability in the field."},
+    {q: "GIS + RS helps in agriculture by?", opts: ["Increasing labor cost", "Monitoring land use/land cover change", "Reducing spectral bands", "Eliminating GPS"], ans: 1, exp: "RS provides multi-temporal data to monitor crop area, growth, and land use changes cost-effectively."},
+    {q: "Yield monitoring in precision ag uses?", opts: ["Satellite only", "Sensors on harvesters + GPS", "Manual records", "Thermal camera"], ans: 1, exp: "Yield monitors on harvesters record yield with GPS location to create yield maps."},
+    {q: "Which index is used for vegetation health?", opts: ["NDBI", "NDVI", "NDWI", "BAI"], ans: 1, exp: "NDVI uses NIR and Red to assess vegetation vigor and health."},
+    {q: "Remote sensing provides what type of data for agriculture?", opts: ["Only point data", "Cost-effective multi-spectral and multi-temporal data", "Soil samples only", "Manual survey data"], ans: 1, exp: "RS provides repeated, large-area spectral data useful for monitoring agricultural landscapes."},
+    {q: "Pest detection using RS is possible by?", opts: ["Detecting changes in reflectance due to damage", "Counting insects directly", "Using radar only", "It is not possible"], ans: 0, exp: "Pests cause stress that changes spectral reflectance, detectable by multispectral sensors."},
+    {q: "Which platform is best for farm-level real-time monitoring?", opts: ["Satellite", "Airborne/Drones", "Ground-based", "Balloon"], ans: 1, exp: "Drones provide high resolution, on-demand data for individual farms."},
+    {q: "Soil and plant sensors in precision ag measure?", opts: ["Only temperature", "Moisture, nutrients, pH, etc", "Wind speed", "Satellite position"], ans: 1, exp: "In-situ sensors measure soil moisture, NPK, pH and plant parameters to guide management."},
+  
+  // 6. Soil & Irrigation (10 Qs)
+  {q: "What is the main purpose of soil moisture remote sensing?", opts: ["Map soil texture", "Estimate water content in soil", "Measure soil pH", "Detect soil minerals"], ans: 1, exp: "Microwave and optical RS are used to estimate volumetric soil moisture for irrigation management."},
+  {q: "Which RS method is most effective for soil moisture?", opts: ["Optical", "Thermal", "Microwave/Radar", "LiDAR"], ans: 2, exp: "Microwave signals penetrate soil and are sensitive to dielectric properties related to water content."},
+  {q: "NDWI is used to monitor?", opts: ["Vegetation health", "Water bodies and soil moisture", "Urban areas", "Soil temperature"], ans: 1, exp: "Normalized Difference Water Index uses NIR and SWIR to detect water content."},
+  {q: "Precision irrigation uses RS to?", opts: ["Apply uniform water", "Apply variable water based on soil/plant needs", "Reduce crop yield", "Increase fertilizer"], ans: 1, exp: "VRT irrigation applies water where needed based on RS + sensor data."},
+  {q: "What causes low radar backscatter from smooth dry soil?", opts: ["High moisture", "Specular reflection", "Volume scattering", "Thermal emission"], ans: 1, exp: "Smooth surfaces reflect radar energy away from the sensor."},
+  {q: "Soil salinity can be inferred using?", opts: ["NDVI", "Thermal + Optical reflectance patterns", "LiDAR", "SAR only"], ans: 1, exp: "Saline soils have higher reflectance in visible and thermal bands."},
+  {q: "Which platform is best for field-level irrigation scheduling?", opts: ["Satellite", "Drone", "Ground sensor", "Balloon"], ans: 1, exp: "Drones give high-res, frequent data for individual fields."},
+  {q: "Thermal RS helps irrigation by detecting?", opts: ["Crop stress due to water deficit", "Soil color", "Nitrogen level", "Pests"], ans: 0, exp: "Water-stressed crops have higher canopy temperature."},
+  {q: "What does high NDVI + low NDWI indicate?", opts: ["Healthy crop with water stress", "Waterlogged soil", "Bare soil", "Urban area"], ans: 0, exp: "Vegetation is healthy but water content is low."},
+  {q: "GIS + RS in irrigation helps with?", opts: ["Manual digging", "Mapping irrigation networks and efficiency", "Counting plants", "Soil sampling only"], ans: 1, exp: "Spatial data helps design and monitor irrigation systems."},
+
+  // 7. Water Resources (10 Qs)
+  {q: "RS is used in hydrology to monitor?", opts: ["Groundwater depth directly", "Surface water extent and snow cover", "Soil nutrients", "Air quality"], ans: 1, exp: "RS maps rivers, lakes, floods, snow using optical and radar data."},
+  {q: "Which index is used for surface water mapping?", opts: ["NDVI", "NDWI", "NDBI", "SAVI"], ans: 1, exp: "NDWI highlights water bodies using Green and NIR/SWIR bands."},
+  {q: "Radar is preferred for flood mapping because?", opts: ["High resolution", "Penetrates clouds and works at night", "Detects temperature", "Low cost"], ans: 1, exp: "Clouds often occur during floods, radar can see through them."},
+  {q: "Watershed delineation uses?", opts: ["DEM from RS/LiDAR", "RGB images only", "Thermal data", "GPS points only"], ans: 0, exp: "Digital Elevation Models are used to derive watershed boundaries."},
+  {q: "Snow cover monitoring uses?", opts: ["NDSI", "NDVI", "NDWI", "NDBI"], ans: 0, exp: "Normalized Difference Snow Index uses Green and SWIR bands."},
+  {q: "Which sensor measures water surface temperature?", opts: ["Multispectral", "Thermal", "LiDAR", "SAR"], ans: 1, exp: "Thermal infrared sensors detect surface temperature."},
+  {q: "RS helps in reservoir monitoring by?", opts: ["Measuring volume changes over time", "Counting fish", "Testing water pH", "Drilling wells"], ans: 0, exp: "Multi-temporal imagery tracks area and volume changes."},
+  {q: "What is a limitation of optical RS for water?", opts: ["Cloud cover", "Low cost", "High resolution", "All weather"], ans: 0, exp: "Clouds block optical sensors, radar is needed instead."},
+  {q: "GIS + RS in water resources helps?", opts: ["Flood risk mapping", "Soil tilling", "Crop harvesting", "Road design"], ans: 0, exp: "Combining terrain and rainfall data for flood modeling."},
+  {q: "Microwave RS can estimate?", opts: ["Soil moisture and ice", "Chlorophyll", "Building height", "Road traffic"], ans: 0, exp: "Microwaves are sensitive to water and ice properties."},
+
+  // 8. Water Quality (10 Qs)
+  {q: "Chlorophyll-a concentration in water is detected using?", opts: ["Red and Blue bands", "Thermal bands", "Radar", "LiDAR"], ans: 0, exp: "Algae absorbs red and blue, reflects green. Used for eutrophication studies."},
+  {q: "Turbidity in water increases reflectance in?", opts: ["Blue", "Red/NIR", "Thermal", "Microwave"], ans: 1, exp: "Suspended sediments increase reflectance in red and NIR."},
+  {q: "Which RS data is used for oil spill detection?", opts: ["Optical only", "SAR", "Thermal only", "LiDAR"], ans: 1, exp: "Oil slicks dampen waves, causing low radar backscatter."},
+  {q: "Water quality parameters mappable by RS include?", opts: ["Turbidity, Chlorophyll, CDOM", "pH directly", "Dissolved oxygen", "Heavy metals"], ans: 0, exp: "RS can infer turbidity and algae but not direct chemical measures."},
+  {q: "High reflectance in blue-green indicates?", opts: ["Clear water", "Turbid water", "Oil spill", "Urban area"], ans: 0, exp: "Clear water absorbs red and reflects blue-green."},
+  {q: "Thermal RS can detect?", opts: ["Thermal pollution from industries", "Nitrate levels", "Bacteria", "Water depth"], ans: 0, exp: "Hot water discharge shows up as temperature anomalies."},
+  {q: "What limits water quality RS?", opts: ["Atmospheric correction and depth penetration", "Sensor cost", "GPS accuracy", "Pixel size"], ans: 0, exp: "Atmosphere and water column affect signal."},
+  {q: "Which satellite is commonly used for coastal water quality?", opts: ["Landsat, Sentinel-2", "GPS", "SAR only", "Drone only"], ans: 0, exp: "They have visible bands needed for water color."},
+  {q: "CDOM in water affects which band?", opts: ["Blue", "Red", "NIR", "SWIR"], ans: 0, exp: "Colored Dissolved Organic Matter absorbs strongly in blue."},
+  {q: "RS + GIS for water quality helps in?", opts: ["Identifying pollution sources", "Digging wells", "Fishing", "Boating"], ans: 0, exp: "Spatial analysis tracks pollution plumes and sources."},
+
+  // 9. Forest & Environment (10 Qs)
+  {q: "Which index is best for forest biomass?", opts: ["NDVI", "EVI", "NDWI", "BAI"], ans: 1, exp: "EVI is less saturated in dense canopy than NDVI."},
+  {q: "LiDAR in forestry is used for?", opts: ["Canopy height and structure", "Soil color", "Water temperature", "Air quality"], ans: 0, exp: "LiDAR penetrates canopy to get 3D forest structure."},
+  {q: "Deforestation monitoring uses?", opts: ["Multi-temporal RS data", "Single image", "Ground survey only", "Thermal only"], ans: 0, exp: "Change detection between dates shows forest loss."},
+  {q: "SAR is useful in forest monitoring because?", opts: ["Works in clouds", "High color resolution", "Measures temperature", "Low cost"], ans: 0, exp: "Tropical forests are often cloudy."},
+  {q: "Forest fire detection uses?", opts: ["Thermal IR bands", "Blue band", "Radar", "LiDAR"], ans: 0, exp: "Active fires have high thermal signatures."},
+  {q: "What does low NDVI in forest indicate?", opts: ["Healthy forest", "Stress, fire, or deforestation", "Water body", "Urban area"], ans: 1, exp: "Vegetation loss reduces NDVI."},
+  {q: "Hyperspectral RS helps with?", opts: ["Tree species identification", "Road mapping", "Soil moisture", "Floods"], ans: 0, exp: "Many narrow bands capture unique spectral signatures."},
+  {q: "Carbon stock estimation uses?", opts: ["Biomass + RS data", "Rainfall only", "Population data", "Road density"], ans: 0, exp: "RS estimates biomass which correlates to carbon."},
+  {q: "Which platform is best for wildlife habitat mapping?", opts: ["Satellite + Drone", "Ground only", "Balloon", "Radar only"], ans: 0, exp: "Combination gives landscape + detailed data."},
+  {q: "GIS + RS in forestry helps with?", opts: ["Forest inventory and management", "Logging only", "Road construction", "Mining"], ans: 0, exp: "Spatial data supports sustainable forest management."},
+
+  // 10. Disaster Management (10 Qs)
+  {q: "RS for flood disaster is used for?", opts: ["Flood extent and damage mapping", "Weather forecast", "Soil sampling", "Road design"], ans: 0, exp: "Pre and post flood images show inundation."},
+  {q: "Which sensor is best during a hurricane?", opts: ["Optical", "SAR", "LiDAR", "RGB"], ans: 1, exp: "SAR penetrates clouds and rain."},
+  {q: "Earthquake damage assessment uses?", opts: ["Pre and post optical/SAR images", "Thermal only", "GPS only", "Drone only"], ans: 0, exp: "Change detection shows collapsed buildings."},
+  {q: "Landslide susceptibility mapping uses?", opts: ["Slope, soil, rainfall + RS", "Population data", "Road network", "Crop type"], ans: 0, exp: "GIS overlays factors to map risk zones."},
+  {q: "Volcanic eruption monitoring uses?", opts: ["Thermal + Gas sensors", "NDVI", "SAR only", "LiDAR"], ans: 0, exp: "Thermal detects lava, sensors detect SO2."},
+  {q: "What is rapid damage assessment?", opts: ["Quick mapping after disaster using RS", "Slow ground survey", "Lab analysis", "Social media only"], ans: 0, exp: "RS provides quick overview for responders."},
+  {q: "Cyclone tracking uses?", opts: ["Geostationary satellite imagery", "Drone", "Ground radar", "LiDAR"], ans: 0, exp: "GEO satellites give continuous monitoring."},
+  {q: "GIS + RS in disaster helps with?", opts: ["Evacuation route planning", "Crop planting", "Building design", "Fishing"], ans: 0, exp: "Maps hazards, vulnerable areas, and routes."},
+  {q: "Post-disaster change detection uses?", opts: ["Image differencing", "Single image", "Manual drawing", "GPS"], ans: 0, exp: "Subtracting pre/post images highlights changes."},
+  {q: "Early warning systems for disasters use?", opts: ["Real-time RS + sensor data", "Historical maps", "Surveys", "Newspapers"], ans: 0, exp: "Satellite and ground sensors provide real-time alerts."},
+
+  // 11. Urban Planning & Land Use (10 Qs)
+  {q: "Which RS data is best for mapping urban sprawl?", opts: ["High resolution optical imagery", "Thermal only", "SAR only", "LiDAR only"], ans: 0, exp: "High-res optical like Sentinel-2, WorldView can distinguish buildings, roads, vegetation."},
+  {q: "NDBI is used to map?", opts: ["Vegetation", "Built-up areas", "Water", "Soil moisture"], ans: 1, exp: "Normalized Difference Built-up Index uses SWIR and NIR to highlight buildings."},
+  {q: "Land Use Land Cover classification uses?", opts: ["Supervised/Unsupervised classification", "GPS only", "Manual drawing", "Radar only"], ans: 0, exp: "Pixels are grouped into classes like urban, forest, water using spectral signatures."},
+  {q: "Heat Island effect is studied using?", opts: ["Thermal infrared bands", "Blue band", "Radar", "LiDAR"], ans: 0, exp: "Urban areas are warmer and show up in thermal imagery."},
+  {q: "LiDAR is useful in urban planning for?", opts: ["3D building models", "Soil pH", "Water quality", "Crop yield"], ans: 0, exp: "LiDAR creates accurate DSM/DTM for buildings and terrain."},
+  {q: "Change detection in cities helps monitor?", opts: ["Illegal construction and growth", "Air pressure", "Rainfall", "Population census"], ans: 0, exp: "Multi-date imagery shows new buildings and land conversion."},
+  {q: "Which satellite is commonly used for urban LULC?", opts: ["Landsat, Sentinel-2", "GPS", "Weather satellite", "GOES"], ans: 0, exp: "They have free, medium resolution data with multiple bands."},
+  {q: "GIS + RS in urban planning helps with?", opts: ["Zoning and infrastructure planning", "Fishing", "Mining", "Farming"], ans: 0, exp: "Spatial analysis supports roads, housing, utilities planning."},
+  {q: "Shadow in urban areas causes problems in?", opts: ["Image classification", "Thermal sensing", "Radar", "GPS"], ans: 0, exp: "Shadows reduce reflectance and can be misclassified."},
+  {q: "Traffic monitoring can use?", opts: ["High temporal resolution imagery + AI", "Soil maps", "Rainfall data", "NDVI"], ans: 0, exp: "Frequent images + AI can count vehicles."},
+
+  // 12. Agriculture & Crop Monitoring (10 Qs)
+  {q: "Which index is most used for crop health?", opts: ["NDVI", "NDWI", "NDBI", "BAI"], ans: 0, exp: "NDVI = (NIR-Red)/(NIR+Red) shows vegetation vigor."},
+  {q: "Crop yield prediction uses?", opts: ["NDVI time series + weather data", "Single image", "Thermal only", "Radar only"], ans: 0, exp: "Growth over season correlates with final yield."},
+  {q: "Pest and disease detection uses?", opts: ["Hyperspectral + Thermal", "Blue band", "SAR", "LiDAR"], ans: 0, exp: "Stressed plants change reflectance and temperature."},
+  {q: "Crop type classification needs?", opts: ["Multi-temporal data", "One image", "Night image", "Radar only"], ans: 0, exp: "Different crops have different phenology across season."},
+  {q: "Precision agriculture uses RS for?", opts: ["Variable rate fertilizer and irrigation", "Harvesting", "Plowing", "Storage"], ans: 0, exp: "Apply inputs only where needed based on maps."},
+  {q: "What does low NDVI in growing season mean?", opts: ["Crop stress or poor growth", "Healthy crop", "Waterlogging", "Urban area"], ans: 0, exp: "Less chlorophyll = lower NIR reflectance."},
+  {q: "SAR is useful in agriculture for?", opts: ["Soil moisture under clouds", "Crop color", "Nitrogen", "Pests"], ans: 0, exp: "Radar penetrates clouds common in rainy season."},
+  {q: "Drone RS in agriculture gives?", opts: ["Very high spatial resolution", "Global coverage", "Low cost satellite", "Night data"], ans: 0, exp: "Drones can fly at 50m for cm-level data."},
+  {q: "Chlorophyll content is estimated using?", opts: ["Red edge bands", "Thermal", "Radar", "Blue"], ans: 0, exp: "Red edge is sensitive to chlorophyll."},
+  {q: "GIS + RS in agriculture helps with?", opts: ["Farm management zones", "Cooking", "Marketing", "Transport"], ans: 0, exp: "Map soil, crop, water to manage fields."},
+
+  // 13. Climate & Meteorology (10 Qs)
+  {q: "Cloud top temperature is measured by?", opts: ["Thermal IR sensors", "Visible", "Radar", "LiDAR"], ans: 0, exp: "Colder clouds = higher tops = more rainfall potential."},
+  {q: "Weather satellites are mostly?", opts: ["Geostationary", "LEO only", "Drones", "Balloon"], ans: 0, exp: "GEO like GOES stay over same area for continuous monitoring."},
+  {q: "Rainfall estimation uses?", opts: ["Cloud top temp + microwave", "NDVI", "NDBI", "LiDAR"], ans: 0, exp: "Cold clouds + radar estimate precipitation."},
+  {q: "Which data is used for climate change studies?", opts: ["Long term satellite time series", "One image", "Drone", "Ground only"], ans: 0, exp: "30+ years of Landsat, MODIS data."},
+  {q: "Sea surface temperature is measured by?", opts: ["Thermal IR", "Visible", "SAR", "LiDAR"], ans: 0, exp: "Ocean emits IR radiation related to temperature."},
+  {q: "Ozone monitoring uses?", opts: ["UV sensors", "Radar", "LiDAR", "Optical"], ans: 0, exp: "Ozone absorbs UV radiation."},
+  {q: "Wind speed over ocean is estimated by?", opts: ["Scatterometer/SAR", "Optical", "Thermal", "GPS"], ans: 0, exp: "Roughness of ocean surface relates to wind."},
+  {q: "Greenhouse gases are monitored by?", opts: ["Hyperspectral IR sensors", "RGB", "Radar", "LiDAR"], ans: 0, exp: "CO2, CH4 have specific absorption bands."},
+  {q: "Drought monitoring uses?", opts: ["NDVI + Rainfall + Soil moisture", "NDBI", "Urban maps", "Roads"], ans: 0, exp: "Combine vegetation, precipitation, moisture data."},
+  {q: "GIS + Climate data helps with?", opts: ["Climate risk mapping", "Cooking", "Mining", "Road design"], ans: 0, exp: "Model impacts of temperature, rainfall changes."},
+
+  // 14. Geology & Mineral Exploration (10 Qs)
+  {q: "Which bands are best for mineral mapping?", opts: ["SWIR", "Blue", "Green", "Thermal"], ans: 0, exp: "Many minerals have absorption features in SWIR."},
+  {q: "Lithology mapping uses?", opts: ["Hyperspectral + Geological maps", "NDVI", "NDWI", "SAR"], ans: 0, exp: "Different rocks have different spectral signatures."},
+  {q: "Lineament mapping for faults uses?", opts: ["High resolution optical + DEM", "NDVI", "Thermal", "Radar"], ans: 0, exp: "Linear features visible in imagery and terrain."},
+  {q: "Oil and gas exploration uses?", opts: ["SAR + Gravity + Seismic", "NDVI", "LiDAR", "Optical"], ans: 0, exp: "Multiple geophysical methods combined."},
+  {q: "Iron oxide is mapped using?", opts: ["Red band", "Blue band", "NIR", "SWIR"], ans: 0, exp: "Iron has high reflectance in red."},
+  {q: "DEM for geology is derived from?", opts: ["LiDAR, Stereo, Radar", "NDVI", "GPS", "Thermal"], ans: 0, exp: "Terrain helps map structures and drainage."},
+  {q: "Hydrothermal alteration is detected in?", opts: ["SWIR bands", "Visible", "Radar", "LiDAR"], ans: 0, exp: "Clays and altered minerals absorb in SWIR."},
+  {q: "GIS + Geology helps with?", opts: ["Mineral prospectivity mapping", "Fishing", "Farming", "Urban"], ans: 0, exp: "Overlay geology, structure, geochemistry."},
+  {q: "Limitation of optical RS in geology?", opts: ["Vegetation cover", "Clouds", "Cost", "Resolution"], ans: 0, exp: "Plants hide bedrock."},
+  {q: "Radar is good for geology in?", opts: ["Arid areas with no vegetation", "Forests", "Cities", "Water"], ans: 0, exp: "Bare rock shows texture and structure."},
+
+  // 15. Coastal & Ocean (10 Qs)
+  {q: "Shoreline change is monitored by?", opts: ["Multi-date satellite imagery", "Single image", "GPS only", "Radar"], ans: 0, exp: "Compare coastlines over years."},
+  {q: "Bathymetry in shallow water uses?", opts: ["Blue-Green bands", "Red", "NIR", "SWIR"], ans: 0, exp: "Blue-green penetrates water best."},
+  {q: "Coral reef health is assessed using?", opts: ["High-res optical + water quality", "SAR", "LiDAR", "Thermal"], ans: 0, exp: "Bleaching shows as color change."},
+  {q: "Oil spill detection uses?", opts: ["SAR", "NDVI", "LiDAR", "Thermal"], ans: 0, exp: "Oil smooths surface, low radar backscatter."},
+  {q: "Sea ice monitoring uses?", opts: ["SAR + Microwave radiometer", "Optical", "LiDAR", "GPS"], ans: 0, exp: "Works in polar night and clouds."},
+  {q: "Chlorophyll in ocean is mapped by?", opts: ["Ocean color sensors", "Radar", "LiDAR", "Thermal"], ans: 0, exp: "Phytoplankton absorbs blue, reflects green."},
+  {q: "Tides and waves are studied with?", opts: ["Altimeter + SAR", "NDVI", "LiDAR", "Optical"], ans: 0, exp: "Radar measures sea surface height and roughness."},
+  {q: "Coastal erosion risk uses?", opts: ["DEM + Shoreline data + Waves", "NDBI", "NDWI", "NDVI"], ans: 0, exp: "GIS models combine factors."},
+  {q: "Limitation of optical RS in ocean?", opts: ["Cloud cover", "Low cost", "High resolution", "All weather"], ans: 0, exp: "Clouds block optical sensors."},
+  {q: "GIS + Coastal RS helps with?", opts: ["Coastal zone management", "Mining", "Farming", "Urban"], ans: 0, exp: "Plan coastal development and protection."},
+
+  // 16. RS Data & Processing (10 Qs)
+  {q: "What is spatial resolution?", opts: ["Pixel size on ground", "Spectral bands", "Temporal revisit", "Radiance"], ans: 0, exp: "1m resolution means each pixel is 1m x 1m."},
+  {q: "Landsat has which resolution?", opts: ["30m multispectral, 15m pan", "1m", "250m", "10m"], ans: 0, exp: "Landsat 8 has 30m MS + 15m panchromatic."},
+  {q: "Radiometric resolution refers to?", opts: ["Bit depth / DN range", "Pixel size", "Bands", "Swath"], ans: 0, exp: "8-bit (0-255), 16-bit (0-65535) values."},
+  {q: "Atmospheric correction removes?", opts: ["Scattering and absorption effects", "Clouds", "Topography", "Pixels"], ans: 0, exp: "Makes data more accurate for analysis."},
+  {q: "Image classification groups pixels by?", opts: ["Spectral signature", "Location", "Color", "Size"], ans: 0, exp: "Similar reflectance patterns = same class."},
+  {q: "NDVI is calculated as?", opts: ["(NIR-Red)/(NIR+Red)", "(Red-NIR)/(Red+NIR)", "(Green-Blue)", "(SWIR-NIR)"], ans: 0, exp: "Range is -1 to 1, >0.2 is vegetation."},
+  {q: "Which is a supervised classification?", opts: ["Maximum Likelihood", "Unsupervised", "K-means", "ISODATA"], ans: 0, exp: "Trained with labeled samples."},
+  {q: "DEM is used for?", opts: ["Orthorectification and slope", "NDVI", "Water quality", "Crop type"], ans: 0, exp: "Corrects terrain distortion and derives terrain info."},
+  {q: "Change detection compares?", opts: ["Multi-date images", "Single image", "DEM", "Spectra"], ans: 0, exp: "Highlights land cover/land use changes."},
+  {q: "Data fusion combines?", opts: ["Multiple sensor/data types", "Same sensor", "Optical only", "Radar only"], ans: 0, exp: "E.g., optical + SAR + DEM for better analysis."},
+
+  // 17. Sensors & Platforms (10 Qs)
+  {q: "MODIS is on which satellites?", opts: ["Terra and Aqua", "Landsat", "Sentinel", "GOES"], ans: 0, exp: "Daily global coverage at 250m-1km."},
+  {q: "Sentinel-2 has which resolution?", opts: ["10m-60m multispectral", "1m", "30m", "250m"], ans: 0, exp: "13 bands, 5-day revisit."},
+  {q: "LiDAR is an?", opts: ["Active sensor", "Passive", "Optical", "Thermal"], ans: 0, exp: "Emits laser pulses, measures return time."},
+  {q: "SAR is best for?", opts: ["All-weather mapping", "Vegetation color", "Night only", "Shallow water"], ans: 0, exp: "Microwaves penetrate clouds."},
+  {q: "Geostationary satellites are used for?", opts: ["Weather and real-time monitoring", "High-res imaging", "Land mapping", "Ocean salinity"], ans: 0, exp: "Stay fixed over one spot."},
+  {q: "WorldView satellites provide?", opts: ["Sub-1m high-res imagery", "30m", "250m", "Daily global"], ans: 0, exp: "Commercial satellites for detailed mapping."},
+  {q: "Thermal sensors detect?", opts: ["Emitted radiation", "Reflected light", "Laser", "Gravity"], ans: 0, exp: "Related to temperature of objects."},
+  {q: "Hyperspectral sensors have?", opts: ["Many narrow bands", "Broad bands", "Few bands", "Low resolution"], ans: 0, exp: "100s of bands for detailed spectral signatures."},
+  {q: "Drones are useful for RS because?", opts: ["High spatial and temporal resolution", "Global coverage", "All weather", "Cheap"], ans: 0, exp: "Fly low and when needed for specific sites."},
+  {q: "Platforms with stereo capability?", opts: ["Airborne + some satellites", "Drones only", "GEO", "Ground"], ans: 0, exp: "Overlap images for 3D."},
+
+  // 18. Applications & Case Studies (10 Qs)
+  {q: "RS is used in precision agriculture for?", opts: ["Crop monitoring and VRT", "Harvesting", "Cooking", "Storage"], ans: 0, exp: "NDVI, soil moisture, variable rate application."},
+  {q: "Flood mapping uses?", opts: ["SAR + Optical", "LiDAR", "Thermal", "RGB"], ans: 0, exp: "SAR penetrates clouds, optical shows extent."},
+  {q: "Forestry RS helps with?", opts: ["Biomass, species, logging", "Soil pH", "Urban planning", "Fishing"], ans: 0, exp: "LiDAR for height, optical for health."},
+  {q: "RS in disaster management?", opts: ["Damage assessment and relief", "Prevention only", "Reconstruction", "Media"], ans: 0, exp: "Quick maps for response."},
+  {q: "NDVI is used in?", opts: ["Crop and vegetation health", "Water quality", "Urban density", "Geology"], ans: 0, exp: "Common in agriculture and ecology."},
+  {q: "Case study: RS for drought?", opts: ["Soil moisture + NDVI trends", "SAR only", "Thermal only", "GPS"], ans: 0, exp: "Combine rainfall, vegetation, moisture data."},
+  {q: "Urban heat islands are mapped using?", opts: ["Thermal imagery", "NDVI", "SAR", "LiDAR"], ans: 0, exp: "Urban areas are hotter than surroundings."},
+  {q: "Mineral exploration uses?", opts: ["Hyperspectral + Alteration mapping", "NDVI", "RGB", "DEM"], ans: 0, exp: "Identify minerals like iron, clays."},
+  {q: "Coastal monitoring includes?", opts: ["Shoreline change, bathymetry", "Soil pH", "Crop yield", "Traffic"], ans: 0, exp: "RS tracks erosion, accretion, depth."},
+  {q: "RS + GIS integration benefits?", opts: ["Better analysis and decision making", "Slower workflow", "Less data", "No benefit"], ans: 0, exp: "Combine spatial analysis with spectral info."},
+  {q: "Future of RS includes?", opts: ["More sensors, AI, and data", "Less data", "No change", "Only optical"], ans: 0, exp: "Advances in sensors, cloud computing, and automation."},
+
+  // 19. Advanced Vegetation Indices (10 Qs)
+  {q: "SAVI is used to reduce effect of?", opts: ["Soil background", "Clouds", "Atmosphere", "Water"], ans: 0, exp: "Soil Adjusted Vegetation Index adds soil brightness correction factor L."},
+  {q: "EVI improves on NDVI by?", opts: ["Reducing saturation and aerosol effects", "Using radar", "Measuring temperature", "Counting trees"], ans: 0, exp: "Uses Blue band to correct aerosols and is less saturated in dense canopy."},
+  {q: "NDMI measures?", opts: ["Vegetation water content", "Built-up areas", "Snow", "Urban heat"], ans: 0, exp: "Normalized Difference Moisture Index uses NIR and SWIR."},
+  {q: "GNDVI uses which bands?", opts: ["Green and NIR", "Red and NIR", "Blue and Red", "SWIR and NIR"], ans: 0, exp: "Green NDVI is more sensitive to chlorophyll than NDVI."},
+  {q: "ARVI corrects for?", opts: ["Atmospheric aerosols", "Soil", "Clouds", "Topography"], ans: 0, exp: "Atmospherically Resistant Vegetation Index uses Blue band."},
+  {q: "OSAVI is best for?", opts: ["Sparse vegetation areas", "Dense forest", "Water", "Urban"], ans: 0, exp: "Optimized SAVI minimizes soil noise."},
+  {q: "PRI is used to detect?", opts: ["Photosynthetic activity", "Water", "Soil", "Buildings"], ans: 0, exp: "Photochemical Reflectance Index uses 531nm and 570nm."},
+  {q: "CIgreen estimates?", opts: ["Chlorophyll content", "Water", "Biomass", "Temperature"], ans: 0, exp: "Chlorophyll Index Green = NIR/Green - 1."},
+  {q: "NDVI saturation occurs in?", opts: ["Dense vegetation", "Bare soil", "Water", "Urban"], ans: 0, exp: "NDVI maxes out ~0.8-0.9 in thick canopy."},
+  {q: "Which index for leaf area index?", opts: ["NDVI, EVI, SAVI", "NDWI", "NDBI", "BAI"], ans: 0, exp: "Vegetation indices correlate with LAI."},
+
+  // 20. GIS Fundamentals (10 Qs)
+  {q: "GIS stands for?", opts: ["Geographic Information System", "Global Imaging Sensor", "Geological Information Service", "Ground Imaging System"], ans: 0, exp: "System for capturing, storing, analyzing spatial data."},
+  {q: "Vector data represents?", opts: ["Points, lines, polygons", "Pixels", "3D voxels", "Radar waves"], ans: 0, exp: "Used for discrete objects like roads, buildings."},
+  {q: "Raster data represents?", opts: ["Grid of cells/pixels", "Points", "Lines", "Tables"], ans: 0, exp: "Used for continuous data like DEM, imagery."},
+  {q: "Buffer analysis creates?", opts: ["Zone around feature", "New map", "Classification", "DEM"], ans: 0, exp: "E.g., 100m buffer around river."},
+  {q: "Overlay analysis combines?", opts: ["Multiple layers", "One layer", "Images only", "Points only"], ans: 0, exp: "Intersect, union, clip operations."},
+  {q: "Coordinate system defines?", opts: ["Location reference on Earth", "Pixel size", "Color", "Time"], ans: 0, exp: "Lat/Long or UTM."},
+  {q: "Attribute data in GIS is?", opts: ["Non-spatial info about features", "Images", "DEM", "Satellite"], ans: 0, exp: "E.g., name, population for a city polygon."},
+  {q: "Topology in GIS ensures?", opts: ["Spatial relationships between features", "Color", "Resolution", "Speed"], ans: 0, exp: "No gaps, overlaps between polygons."},
+  {q: "GIS + RS integration benefit?", opts: ["Analyze spectral + spatial data together", "Faster internet", "Better camera", "More satellites"], ans: 0, exp: "RS provides data, GIS provides analysis tools."},
+  {q: "Common GIS software?", opts: ["ArcGIS, QGIS", "Photoshop", "Excel", "Word"], ans: 0, exp: "Used for mapping and spatial analysis."},
+
+  // 21. Hyperspectral & Advanced Sensors (10 Qs)
+  {q: "Hyperspectral sensors have?", opts: ["100s of narrow bands", "3-10 bands", "1 band", "2 bands"], ans: 0, exp: "Can identify materials by unique spectral signature."},
+  {q: "Hyperion was on which satellite?", opts: ["EO-1", "Landsat", "Sentinel", "MODIS"], ans: 0, exp: "First civilian hyperspectral satellite."},
+  {q: "PRISMA is a?", opts: ["Hyperspectral satellite", "Radar", "LiDAR", "Drone"], ans: 0, exp: "Italian hyperspectral + panchromatic satellite."},
+  {q: "Main advantage of hyperspectral?", opts: ["Material identification", "Low cost", "Large swath", "Real-time"], ans: 0, exp: "Can distinguish crop types, minerals, etc."},
+  {q: "Limitation of hyperspectral?", opts: ["Large data volume and processing", "Cloud penetration", "Low resolution", "No bands"], ans: 0, exp: "Big data and complex analysis needed."},
+  {q: "AVIRIS is an?", opts: ["Airborne hyperspectral sensor", "Satellite", "Ground sensor", "Radar"], ans: 0, exp: "Used for mineral and vegetation studies."},
+  {q: "Spectral resolution refers to?", opts: ["Number and width of bands", "Pixel size", "Swath", "Revisit time"], ans: 0, exp: "Narrower bands = better discrimination."},
+  {q: "Thermal hyperspectral measures?", opts: ["Emitted radiation in many bands", "Reflected light", "Radar", "Laser"], ans: 0, exp: "Used for temperature and emissivity mapping."},
+  {q: "Applications of hyperspectral?", opts: ["Mineral, vegetation, water quality", "Traffic", "Weather", "Population"], ans: 0, exp: "Detailed material mapping."},
+  {q: "Data cube in hyperspectral is?", opts: ["X, Y spatial + Z spectral", "3D model", "Video", "Point cloud"], ans: 0, exp: "Each pixel has full spectrum."},
+
+  // 22. Radar & Microwave Remote Sensing (10 Qs)
+  {q: "SAR stands for?", opts: ["Synthetic Aperture Radar", "Satellite Array Radar", "Surface Area Radar", "Signal Active Radar"], ans: 0, exp: "Creates high-res images using radar."},
+  {q: "Radar wavelength is?", opts: ["1mm to 1m", "400-700nm", "10-100um", "1-10km"], ans: 0, exp: "Microwave region, longer than optical."},
+  {q: "Radar advantage over optical?", opts: ["All-weather, day-night", "Color", "High resolution", "Low cost"], ans: 0, exp: "Penetrates clouds and darkness."},
+  {q: "Backscatter depends on?", opts: ["Surface roughness and moisture", "Color", "Temperature", "Elevation"], ans: 0, exp: "Rough wet surfaces = high backscatter."},
+  {q: "Speckle in SAR is?", opts: ["Grainy noise pattern", "Cloud", "Shadow", "Color error"], ans: 0, exp: "Caused by coherent radar waves."},
+  {q: "Polarization in SAR?", opts: ["HH, HV, VV, VH", "RGB", "Thermal", "Optical"], ans: 0, exp: "Different info from different polarizations."},
+  {q: "InSAR is used for?", opts: ["Ground deformation measurement", "Vegetation", "Water", "Urban"], ans: 0, exp: "Interferometric SAR detects mm-level movement."},
+  {q: "Radar can penetrate?", opts: ["Dry soil and vegetation", "Water", "Metal", "Clouds only"], ans: 0, exp: "L-band penetrates deeper than X-band."},
+  {q: "Common SAR satellites?", opts: ["Sentinel-1, Radarsat", "Landsat", "MODIS", "GOES"], ans: 0, exp: "C-band SAR for global monitoring."},
+  {q: "Radar is used in?", opts: ["Flood, glacier, soil moisture", "Crop color", "Urban planning", "Air quality"], ans: 0, exp: "Where clouds are problem."},
+
+  // 23. LiDAR & 3D Remote Sensing (10 Qs)
+  {q: "LiDAR measures distance by?", opts: ["Time of laser pulse return", "Color", "Temperature", "Radar"], ans: 0, exp: "Light Detection and Ranging."},
+  {q: "LiDAR is an?", opts: ["Active sensor", "Passive", "Optical", "Thermal"], ans: 0, exp: "Emits its own laser energy."},
+  {q: "Point cloud from LiDAR is?", opts: ["3D collection of points", "2D image", "Raster", "Vector"], ans: 0, exp: "Each point has X,Y,Z coordinates."},
+  {q: "DSM vs DTM?", opts: ["DSM includes objects, DTM is bare earth", "Same", "DSM is 2D", "DTM is color"], ans: 0, exp: "DSM = trees+buildings, DTM = ground only."},
+  {q: "LiDAR application in forestry?", opts: ["Canopy height and volume", "Soil pH", "Water", "Roads"], ans: 0, exp: "Penetrates canopy to ground."},
+  {q: "LiDAR used in urban?", opts: ["3D building models", "NDVI", "Water quality", "Crops"], ans: 0, exp: "Creates city 3D models."},
+  {q: "Airborne vs Terrestrial LiDAR?", opts: ["Airborne for large area, Terrestrial for detail", "Same", "Terrestrial for large", "Airborne for detail"], ans: 0, exp: "Different scales and resolution."},
+  {q: "LiDAR limitation?", opts: ["Expensive and weather sensitive", "Cloud penetration", "Low cost", "Large swath"], ans: 0, exp: "Rain/fog scatter laser."},
+  {q: "Wavelength of LiDAR?", opts: ["Near infrared", "Microwave", "Radio", "UV"], ans: 0, exp: "Typically 1064nm, 1550nm."},
+  {q: "Full waveform LiDAR records?", opts: ["Entire reflected signal", "One point", "Image", "Color"], ans: 0, exp: "More info about vegetation structure."},
+
+  // 24. Image Pre-processing (10 Qs)
+  {q: "Radiometric correction fixes?", opts: ["Sensor and atmospheric effects", "Clouds", "Geometry", "Color"], ans: 0, exp: "Converts DN to reflectance."},
+  {q: "Geometric correction fixes?", opts: ["Location and shape distortion", "Brightness", "Bands", "Noise"], ans: 0, exp: "Orthorectification using GCPs and DEM."},
+  {q: "Image enhancement improves?", opts: ["Visual interpretation", "Accuracy", "Resolution", "Swath"], ans: 0, exp: "Contrast stretch, filtering."},
+  {q: "Cloud masking removes?", opts: ["Clouds and shadows", "Vegetation", "Water", "Urban"], ans: 0, exp: "Using cloud band or algorithm."},
+  {q: "Mosaicking combines?", opts: ["Multiple images into one", "Bands", "Pixels", "Layers"], ans: 0, exp: "For large area coverage."},
+  {q: "Resampling changes?", opts: ["Pixel size", "Bands", "Color", "Location"], ans: 0, exp: "Nearest neighbor, bilinear, cubic."},
+  {q: "Histogram equalization?", opts: ["Improves contrast", "Removes clouds", "Classifies", "Orthorectifies"], ans: 0, exp: "Spreads pixel values."},
+  {q: "Pansharpening combines?", opts: ["High-res pan + low-res MS", "Two MS", "Radar + Optical", "DEM + Image"], ans: 0, exp: "E.g., 15m + 30m Landsat = 15m MS."},
+  {q: "Atmospheric correction models?", opts: ["6S, FLAASH", "NDVI", "SAR", "LiDAR"], ans: 0, exp: "Convert TOA to surface reflectance."},
+  {q: "Why pre-process RS data?", opts: ["To improve accuracy and analysis", "To make it colorful", "To reduce size", "For fun"], ans: 0, exp: "Raw data has errors."},
+
+  // 25. Machine Learning in RS (10 Qs)
+  {q: "Supervised classification needs?", opts: ["Training samples", "No data", "One image", "Radar"], ans: 0, exp: "Labeled pixels to train model."},
+  {q: "Unsupervised classification?", opts: ["No training samples", "Needs labels", "Uses GPS", "Manual"], ans: 0, exp: "Algorithm finds clusters."},
+  {q: "Random Forest in RS?", opts: ["Ensemble decision trees", "Neural network", "Regression", "Clustering"], ans: 0, exp: "Good for land cover classification."},
+  {q: "CNN is used for?", opts: ["Image feature extraction", "Text", "Audio", "Tables"], ans: 0, exp: "Deep learning for RS imagery."},
+  {q: "Overfitting means?", opts: ["Model fits training data too well", "Underfits", "No data", "Slow"], ans: 0, exp: "Poor generalization to new data."},
+  {q: "Validation set is used for?", opts: ["Tuning model parameters", "Training", "Testing final", "Nothing"], ans: 0, exp: "Avoid overfitting."},
+  {q: "Feature selection in RS?", opts: ["Choosing best bands/indices", "All bands", "Random", "None"], ans: 0, exp: "Reduces dimensionality."},
+  {q: "Object-based classification?", opts: ["Groups pixels into objects", "Pixel-based", "Band-based", "Manual"], ans: 0, exp: "Uses shape, texture, context."},
+  {q: "Accuracy assessment uses?", opts: ["Confusion matrix", "NDVI", "DEM", "Radar"], ans: 0, exp: "Overall, producer, user accuracy."},
+  {q: "Transfer learning in RS?", opts: ["Use pre-trained model on new area", "Train from scratch", "No model", "Manual"], ans: 0, exp: "Saves time and data."},
+  // ... previous 400 questions ...
+  // 30. Disaster Risk Reduction cont'd (10 Qs)
+  {q: "Flood risk mapping uses?", opts: ["DEM + RS + rainfall", "Population", "Roads", "Soil color"], ans: 0, exp: "GIS models flood zones and vulnerability."},
+  {q: "Early warning for cyclones uses?", opts: ["Geostationary satellite + models", "Drones", "Ground survey", "Radar only"], ans: 0, exp: "Real-time tracking of storm."},
+  {q: "Post-disaster assessment uses?", opts: ["Pre and post imagery", "One image", "GPS", "Manual"], ans: 0, exp: "Damage maps for relief."},
+  {q: "Landslide susceptibility uses?", opts: ["Slope, geology, rainfall + RS", "Population", "Roads", "NDVI"], ans: 0, exp: "Identify high risk zones."},
+  {q: "Volcano monitoring uses?", opts: ["Thermal + Gas sensors + Deformation", "NDVI", "Optical", "LiDAR"], ans: 0, exp: "Detect eruption signs."},
+  {q: "Earthquake damage uses?", opts: ["InSAR + Optical change detection", "Thermal", "NDWI", "GPS"], ans: 0, exp: "Measure ground deformation and buildings."},
+  {q: "Wildfire monitoring uses?", opts: ["Thermal hotspots + Smoke plumes", "NDVI", "SAR", "LiDAR"], ans: 0, exp: "MODIS, VIIRS active fire products."},
+  {q: "GIS in disaster helps with?", opts: ["Evacuation and resource allocation", "Cooking", "Farming", "Mining"], ans: 0, exp: "Route planning and aid distribution."},
+  {q: "Limitation of RS in disaster?", opts: ["Clouds and response time", "Cost", "Resolution", "Bands"], ans: 0, exp: "Need rapid data delivery."},
+  {q: "Future of disaster RS?", opts: ["AI + real-time + drones", "Less data", "No change", "Only optical"], ans: 0, exp: "Faster and more accurate."},
+
+  // 31. Big Data & Cloud Computing (10 Qs)
+  {q: "Google Earth Engine is?", opts: ["Cloud platform for RS data", "Satellite", "Drone", "GIS software"], ans: 0, exp: "Processes petabytes of satellite data."},
+  {q: "Big data in RS means?", opts: ["Large volume, velocity, variety", "Small data", "No data", "Images only"], ans: 0, exp: "From many sensors, high frequency."},
+  {q: "Cloud computing benefit?", opts: ["Scalable processing without hardware", "Slower", "Expensive", "No internet"], ans: 0, exp: "Run analysis on cloud servers."},
+  {q: "Limitation of cloud RS?", opts: ["Internet and data transfer", "Cost", "Accuracy", "Resolution"], ans: 0, exp: "Need good bandwidth."},
+  {q: "Data cube concept?", opts: ["Spatiotemporal data organization", "3D model", "Image", "Table"], ans: 0, exp: "X, Y, Time, Bands."},
+  {q: "Open data platforms?", opts: ["Landsat, Sentinel, MODIS", "Paid only", "No data", "Private"], ans: 0, exp: "Free and open access."},
+  {q: "Future trend?", opts: ["More automation and AI", "Less data", "Manual only", "No cloud"], ans: 0, exp: "AI for processing big data."},
+  {q: "Edge computing in RS?", opts: ["Processing on drone/satellite", "Cloud only", "Manual", "Desktop"], ans: 0, exp: "Real-time on device."},
+  {q: "GIS + Cloud?", opts: ["Web GIS and dashboards", "Desktop only", "Paper maps", "GPS"], ans: 0, exp: "Share maps online."},
+
+  // 32. Ethics & Future (10 Qs)
+  {q: "Ethical issue in RS?", opts: ["Privacy and surveillance", "Cost", "Resolution", "Bands"], ans: 0, exp: "High-res can monitor people."},
+  {q: "Data policy issues?", opts: ["Access and ownership", "Color", "Size", "Speed"], ans: 0, exp: "Open vs commercial data."},
+  {q: "Future sensor trend?", opts: ["More spectral, spatial, temporal", "Less", "No change", "Only optical"], ans: 0, exp: "Nano-satellites, hyperspectral."},
+  {q: "AI in RS future?", opts: ["Automated classification and detection", "Manual", "No use", "Slower"], ans: 0, exp: "Deep learning for big data."},
+  {q: "CubeSats role?", opts: ["Low cost, high revisit", "High res", "Expensive", "No use"], ans: 0, exp: "Planet, Dove satellites."},
+  {q: "Interoperability means?", opts: ["Data from different sensors work together", "Same sensor", "No data", "Manual"], ans: 0, exp: "Standards for data."},
+  {q: "Citizen science in RS?", opts: ["Public collecting ground data", "Satellites", "Drones", "GPS"], ans: 0, exp: "Validation and crowdsourcing."},
+  {q: "Capacity building needed?", opts: ["Training people to use RS", "No need", "Hardware", "Software"], ans: 0, exp: "For developing countries."},
+  {q: "Sustainable Development Goals use RS?", opts: ["Yes, for monitoring", "No", "Only GDP", "Only population"], ans: 0, exp: "SDG 13, 15, etc."},
+  {q: "Most important future skill?", opts: ["Data analysis and AI", "Drawing", "GPS", "Paper maps"], ans: 0, exp: "Big data + coding + RS."}
+
+];
+     // ADD YOUR QUESTIONS HERE
+
+    let quizQuestions=[], userAnswers=[], timerInterval, timeLeft;
+
+    function goDashboard(){ window.location.href = "dashboard.html"; }
+    function hideAll(){ ['setup','quiz','analysis'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+
+    function saveScore(score, qCount){
+      let history = JSON.parse(localStorage.getItem('testHistory') || '[]');
+      history.push({ course: COURSE_NAME, score: score, qCount: qCount, date: Date.now() });
+      localStorage.setItem('testHistory', JSON.stringify(history));
+    }
+
+    function startQuiz(){
+      const qCount=parseInt(document.getElementById('qCount').value);
+      const minutes=parseInt(document.getElementById('time').value);
+      const pool=[...questionBank];
+      quizQuestions=pool.sort(()=>0.5-Math.random()).slice(0, Math.min(qCount, pool.length));
+      userAnswers=Array(quizQuestions.length).fill(null);
+      timeLeft=minutes*60;
+      hideAll();
+      document.getElementById('quiz').classList.remove('hidden');
+      buildQuestions();
+      buildNav();
+      updateTimer(); // show immediately
+      timerInterval=setInterval(updateTimer,1000);
+      setupScrollSpy();
+    }
+
+    function buildNav(){
+      const nav=document.getElementById('qNav');
+      nav.innerHTML="";
+      quizQuestions.forEach((_,i)=>{
+        const btn=document.createElement('button');
+        btn.innerText=i+1;
+        btn.onclick=()=>document.getElementById(`q-${i}`).scrollIntoView({behavior:'smooth', block:'start'});
+        nav.appendChild(btn);
+      });
+    }
+
+    function buildQuestions(){
+      const container = document.getElementById('questionsContainer');
+      container.innerHTML = "";
+      quizQuestions.forEach((q,i)=>{
+        const div = document.createElement('div');
+        div.className = "card";
+        div.id = `q-${i}`;
+        div.innerHTML = `
+          <div class="question">Q${i+1}: ${q.q}</div>
+          <div class="options">
+            ${q.opts.map((opt,j)=>`
+              <label><input type="radio" name="opt-${i}" ${userAnswers[i]==j?'checked':''} onchange="userAnswers[${i}]=${j}; updateNav()"> ${opt}</label>
+            `).join('')}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateNav(){
+      [...document.querySelectorAll('.q-nav button')].forEach((b,i)=>{
+        b.classList.toggle('answered',userAnswers[i]!==null);
+      });
+    }
+
+    function setupScrollSpy(){
+      const observer = new IntersectionObserver((entries)=>{
+        entries.forEach(entry=>{
+          if(entry.isIntersecting){
+            const id = entry.target.id.split('-')[1];
+            [...document.querySelectorAll('.q-nav button')].forEach((b,i)=>{
+              b.classList.toggle('active', i==id);
+            });
+          }
+        })
+      }, {threshold: 0.4});
+      quizQuestions.forEach((_,i)=>{ observer.observe(document.getElementById(`q-${i}`)); })
+    }
+
+    function updateTimer(){
+      const mins = Math.floor(timeLeft/60);
+      const secs = (timeLeft%60).toString().padStart(2,'0');
+      document.getElementById('timer').innerText = `Time: ${mins}:${secs}`;
+      timeLeft--;
+      if(timeLeft<0) submitQuiz();
+    }
+
+    function submitQuiz(){
+      clearInterval(timerInterval);
+      let correct=0;
+      quizQuestions.forEach((q,i)=>{ if(userAnswers[i]===q.ans) correct++; });
+      const wrong = quizQuestions.length - correct;
+      const score=Math.round(correct/quizQuestions.length*100);
+      saveScore(score, quizQuestions.length);
+      const result={course:COURSE_NAME,qCount:quizQuestions.length,correct,wrong,score,questions:quizQuestions,answers:userAnswers};
+      showAnalysis(result);
+    }
+
+    function showAnalysis(result){
+      hideAll();
+      document.getElementById('analysis').classList.remove('hidden');
+      const box=document.getElementById('analysisBox');
+      box.innerHTML=`
+        <h2 style="text-align:center; color:var(--accent);">Test Submitted!</h2>
+        <div class="score-card">
+          <h2>Score: ${result.correct}/${result.qCount} - ${result.score}%</h2>
+          <div class="stats">
+            <span class="correct-stat">Correct: ${result.correct}</span>
+            <span class="wrong-stat">Wrong/Not Answered: ${result.wrong}</span>
+          </div>
+        </div>
+        <h3 class="review-title">Question Review</h3>
+      `+ result.questions.map((q,i)=>{
+        const ua=result.answers[i];
+        const isCorrect = ua===q.ans;
+        const cls=isCorrect?'correct':'wrong';
+        const status=isCorrect?'✓ Correct':'✗ Wrong';
+        return `<div class="review-item ${cls}">
+          <div class="review-head">
+            <span>Q${i+1}. ${q.q}</span>
+            <span class="review-status ${isCorrect?'':'wrong'}">${status}</span>
+          </div>
+          <div><b>Your Answer:</b> ${ua!==null?q.opts[ua]:"Not Answered"}</div>
+          ${!isCorrect? `<div><b>Correct Answer:</b> ${q.opts[q.ans]}</div>` : ''}
+          <div style="margin-top:6px; color:var(--muted); font-size:14px;"><i>Explanation: ${q.exp}</i></div>
+        </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
